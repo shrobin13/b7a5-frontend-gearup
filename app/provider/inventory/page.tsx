@@ -1,6 +1,13 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
+import { getProviderGear } from "@/services/provider";
+import { useAuthStore } from "@/store/auth-store";
+import type { Gear } from "@/types";
 
 const sidebarItems = [
   { href: "/provider", label: "Overview" },
@@ -9,13 +16,40 @@ const sidebarItems = [
   { href: "/provider/add-gear", label: "Add gear" },
 ];
 
-const inventory = [
-  { name: "Trail Pro Tent", stock: 4, price: "$28/day", status: "active" },
-  { name: "Summit Pack", stock: 7, price: "$18/day", status: "active" },
-  { name: "Alpine Stove", stock: 2, price: "$16/day", status: "pending" },
+const fallbackInventory: Gear[] = [
+  { _id: "fallback-gear-1", name: "Trail Pro Tent", stock: 4, pricePerDay: 28, condition: "Good" },
+  { _id: "fallback-gear-2", name: "Summit Pack", stock: 7, pricePerDay: 18, condition: "Excellent" },
 ];
 
 export default function ProviderInventoryPage() {
+  const router = useRouter();
+  const { isAuthenticated, token } = useAuthStore();
+  const [inventory, setInventory] = useState<Gear[]>(fallbackInventory);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      router.replace("/login");
+      return;
+    }
+
+    const authToken = token;
+
+    async function loadData() {
+      try {
+        const nextGear = await getProviderGear(authToken);
+        setInventory(nextGear ?? fallbackInventory);
+      } catch {
+        setInventory(fallbackInventory);
+      }
+    }
+
+    void loadData();
+  }, [isAuthenticated, router, token]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <DashboardShell title="Provider" accent="pine" items={sidebarItems}>
       <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -30,10 +64,13 @@ export default function ProviderInventoryPage() {
         columns={[
           { key: "name", label: "Gear" },
           { key: "stock", label: "Stock" },
-          { key: "price", label: "Price" },
-          { key: "status", label: "Status" },
+          { key: "pricePerDay", label: "Price" },
+          { key: "condition", label: "Condition" },
         ]}
-        data={inventory}
+        data={inventory.map((item) => ({
+          ...item,
+          pricePerDay: item.pricePerDay ? `$${item.pricePerDay}/day` : "—",
+        }))}
       />
     </DashboardShell>
   );

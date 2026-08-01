@@ -1,12 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 
 export function StatusBadge({ status }: { status: string }) {
+  const normalized = status?.toLowerCase() ?? "pending";
   const variant =
-    status === "approved" || status === "active" || status === "paid"
+    normalized === "approved" || normalized === "active" || normalized === "paid"
       ? "default"
-      : status === "pending" || status === "processing"
+      : normalized === "pending" || normalized === "processing"
         ? "secondary"
-        : status === "cancelled" || status === "inactive"
+        : normalized === "cancelled" || normalized === "inactive"
           ? "destructive"
           : "outline";
 

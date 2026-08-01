@@ -25,14 +25,21 @@ export default function LoginPage() {
     try {
       const response = await login(form);
       const token = response.token ?? response.accessToken ?? null;
+      const user = response.user ?? {
+        email: form.email,
+        name: form.email.split("@")[0],
+        role: "CUSTOMER" as const,
+      };
 
       if (!token) {
         throw new Error("Login response did not include an auth token");
       }
 
-      setAuth(token, response.user ?? { email: form.email, name: form.email.split("@")[0], role: "CUSTOMER" });
+      setAuth(token, user);
       toast.success("Login successful");
-      router.push("/dashboard");
+
+      const redirectPath = user.role === "PROVIDER" ? "/provider" : user.role === "ADMIN" ? "/admin" : "/dashboard";
+      router.push(redirectPath);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed");
     } finally {

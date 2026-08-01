@@ -1,5 +1,12 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
+import { getAdminRentals } from "@/services/admin";
+import { useAuthStore } from "@/store/auth-store";
+import type { Rental } from "@/types";
 
 const sidebarItems = [
   { href: "/admin", label: "Overview" },
@@ -8,13 +15,40 @@ const sidebarItems = [
   { href: "/admin/rentals", label: "Rentals" },
 ];
 
-const rentals = [
-  { id: "R-101", customer: "Ahsan", total: "$84", status: "active" },
-  { id: "R-102", customer: "Nadia", total: "$42", status: "completed" },
-  { id: "R-103", customer: "Kai", total: "$118", status: "pending" },
+const fallbackRentals: Rental[] = [
+  { _id: "fallback-rental-1", status: "active", totalAmount: 84, gear: { name: "Trail Pro Tent" } },
+  { _id: "fallback-rental-2", status: "completed", totalAmount: 42, gear: { name: "Summit Pack" } },
 ];
 
 export default function AdminRentalsPage() {
+  const router = useRouter();
+  const { isAuthenticated, token } = useAuthStore();
+  const [rentals, setRentals] = useState<Rental[]>(fallbackRentals);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      router.replace("/login");
+      return;
+    }
+
+    const authToken = token;
+
+    async function loadData() {
+      try {
+        const nextRentals = await getAdminRentals(authToken);
+        setRentals(nextRentals ?? fallbackRentals);
+      } catch {
+        setRentals(fallbackRentals);
+      }
+    }
+
+    void loadData();
+  }, [isAuthenticated, router, token]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <DashboardShell title="Admin" accent="ink" items={sidebarItems}>
       <div className="mb-8">
@@ -25,11 +59,16 @@ export default function AdminRentalsPage() {
       <DataTable
         columns={[
           { key: "id", label: "ID" },
-          { key: "customer", label: "Customer" },
+          { key: "gear", label: "Item" },
           { key: "total", label: "Total" },
           { key: "status", label: "Status" },
         ]}
-        data={rentals}
+        data={rentals.map((rental) => ({
+          ...rental,
+          id: rental._id ?? "unknown",
+          gear: rental.gear?.name ?? "Rental item",
+          total: rental.totalAmount ? `$${rental.totalAmount}` : "—",
+        }))}
       />
     </DashboardShell>
   );

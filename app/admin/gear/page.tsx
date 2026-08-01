@@ -1,5 +1,12 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
+import { getAdminGear } from "@/services/admin";
+import { useAuthStore } from "@/store/auth-store";
+import type { Gear } from "@/types";
 
 const sidebarItems = [
   { href: "/admin", label: "Overview" },
@@ -8,13 +15,40 @@ const sidebarItems = [
   { href: "/admin/rentals", label: "Rentals" },
 ];
 
-const gear = [
-  { name: "Trail Pro Tent", provider: "North Peak", status: "pending" },
-  { name: "Glide Bike", provider: "City Ride", status: "approved" },
-  { name: "Summit Pack", provider: "Peak & Pine", status: "active" },
+const fallbackGear: Gear[] = [
+  { _id: "fallback-admin-gear-1", name: "Trail Pro Tent", provider: "North Peak", stock: 4, condition: "Good" },
+  { _id: "fallback-admin-gear-2", name: "Glide Bike", provider: "City Ride", stock: 2, condition: "Excellent" },
 ];
 
 export default function AdminGearPage() {
+  const router = useRouter();
+  const { isAuthenticated, token } = useAuthStore();
+  const [gear, setGear] = useState<Gear[]>(fallbackGear);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      router.replace("/login");
+      return;
+    }
+
+    const authToken = token;
+
+    async function loadData() {
+      try {
+        const nextGear = await getAdminGear(authToken);
+        setGear(nextGear ?? fallbackGear);
+      } catch {
+        setGear(fallbackGear);
+      }
+    }
+
+    void loadData();
+  }, [isAuthenticated, router, token]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <DashboardShell title="Admin" accent="ink" items={sidebarItems}>
       <div className="mb-8">
@@ -26,9 +60,13 @@ export default function AdminGearPage() {
         columns={[
           { key: "name", label: "Gear" },
           { key: "provider", label: "Provider" },
-          { key: "status", label: "Status" },
+          { key: "condition", label: "Condition" },
         ]}
-        data={gear}
+        data={gear.map((item) => ({
+          ...item,
+          provider: item.provider ?? "Unassigned",
+          condition: item.condition ?? "Pending",
+        }))}
       />
     </DashboardShell>
   );
