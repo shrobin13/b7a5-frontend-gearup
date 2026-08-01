@@ -1,7 +1,15 @@
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { MetricCard } from "@/components/shared/metric-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const sidebarItems = [
+  { href: "/provider", label: "Overview" },
+  { href: "/provider/inventory", label: "Inventory" },
+  { href: "/provider/orders", label: "Orders" },
+  { href: "/provider/add-gear", label: "Add gear" },
+];
 
 const orders = [
   { customer: "Maya R.", gear: "Trail Pro Tent", dates: "Aug 12 – Aug 18", status: "pending" },
@@ -11,7 +19,7 @@ const orders = [
 
 export default function ProviderDashboardPage() {
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <DashboardShell title="Provider" accent="pine" items={sidebarItems}>
       <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-[0.7rem] uppercase tracking-[0.2em] text-pine">Provider dashboard</p>
@@ -49,6 +57,6 @@ export default function ProviderDashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </DashboardShell>
   );
 }

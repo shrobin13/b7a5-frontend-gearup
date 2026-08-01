@@ -1,6 +1,14 @@
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { MetricCard } from "@/components/shared/metric-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const sidebarItems = [
+  { href: "/admin", label: "Overview" },
+  { href: "/admin/users", label: "Users" },
+  { href: "/admin/gear", label: "Gear" },
+  { href: "/admin/rentals", label: "Rentals" },
+];
 
 const rows = [
   { name: "Maya R.", type: "User", status: "approved" },
@@ -10,7 +18,7 @@ const rows = [
 
 export default function AdminDashboardPage() {
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <DashboardShell title="Admin" accent="ink" items={sidebarItems}>
       <div className="mb-8">
         <p className="text-[0.7rem] uppercase tracking-[0.2em] text-ink-muted">Admin dashboard</p>
         <h1 className="mt-2 font-display text-4xl text-ink">Platform overview</h1>
@@ -41,6 +49,6 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </DashboardShell>
   );
 }
