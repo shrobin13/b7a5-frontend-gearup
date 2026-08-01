@@ -1,7 +1,22 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowLeft, Star } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getGearById } from "@/services/gear";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const fallbackMatch = {
+  id: "trail-pro-tent",
+  name: "Trail Pro Tent",
+  category: "Tent",
+  price: 28,
+  rating: 4.8,
+  available: true,
+  description: "Spacious 4-person camping tent built for comfort, weather protection, and quick setup on your next outdoor trip.",
+};
 
 const reviews = [
   { name: "Maya", rating: 5, text: "Super easy to set up and exactly as described." },
@@ -10,12 +25,41 @@ const reviews = [
 ];
 
 export default function GearDetailPage() {
+  const params = useParams<{ id: string }>();
+  const [gear, setGear] = useState(fallbackMatch);
+
+  useEffect(() => {
+    const id = params?.id ?? fallbackMatch.id;
+
+    const loadGear = async () => {
+      try {
+        const item = await getGearById(id);
+
+        if (item) {
+          setGear({
+            id: item.id ?? item._id ?? id,
+            name: item.name,
+            category: item.category ?? "Camp",
+            price: Number(item.pricePerDay ?? fallbackMatch.price),
+            rating: Number(item.rating ?? fallbackMatch.rating),
+            available: (item.stock ?? 1) > 0,
+            description: item.description ?? fallbackMatch.description,
+          });
+        }
+      } catch {
+        // Keep the fallback product when the API is unavailable.
+      }
+    };
+
+    void loadGear();
+  }, [params]);
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-[0.7rem] uppercase tracking-[0.2em] text-accent">Gear detail</p>
-          <h1 className="mt-2 font-display text-4xl text-ink md:text-5xl">Trail Pro Tent</h1>
+          <h1 className="mt-2 font-display text-4xl text-ink md:text-5xl">{gear.name}</h1>
         </div>
         <Button asChild variant="outline" className="rounded-xl border-border bg-background">
           <Link href="/gear" className="inline-flex items-center gap-2">
@@ -40,26 +84,26 @@ export default function GearDetailPage() {
         <aside className="rounded-[2rem] border border-border bg-surface p-5 shadow-[0_18px_42px_rgba(26,36,32,0.05)]">
           <div className="flex items-center gap-2 text-sm text-ink-muted">
             <Star className="h-4 w-4 fill-gold text-gold" />
-            <span>4.8</span>
+            <span>{gear.rating}</span>
             <span>(23 reviews)</span>
           </div>
 
           <div className="mt-4 flex items-center justify-between gap-3">
             <div>
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-ink-muted">Price</p>
-              <p className="mt-2 font-mono text-3xl font-semibold text-foreground">$28/day</p>
+              <p className="mt-2 font-mono text-3xl font-semibold text-foreground">${gear.price}/day</p>
             </div>
-            <span className="rounded-full bg-pine-soft px-2.5 py-1 text-xs font-medium text-pine">Available</span>
+            <span className="rounded-full bg-pine-soft px-2.5 py-1 text-xs font-medium text-pine">
+              {gear.available ? "Available" : "Unavailable"}
+            </span>
           </div>
 
-          <p className="mt-5 text-base leading-7 text-ink-muted">
-            Spacious 4-person camping tent built for comfort, weather protection, and quick setup on your next outdoor trip.
-          </p>
+          <p className="mt-5 text-base leading-7 text-ink-muted">{gear.description}</p>
 
           <div className="mt-6 space-y-3 rounded-2xl border border-border bg-surface-muted p-4 text-sm text-ink-muted">
             <p>• Capacity: 4 people</p>
             <p>• Condition: Like new</p>
-            <p>• Category: Camping</p>
+            <p>• Category: {gear.category}</p>
           </div>
 
           <div className="mt-6 space-y-4">
@@ -82,7 +126,7 @@ export default function GearDetailPage() {
           <div className="mt-6 rounded-2xl border border-border bg-surface-muted p-4">
             <div className="flex items-center justify-between text-sm text-ink-muted">
               <span>Subtotal</span>
-              <span className="font-mono text-foreground">$168</span>
+              <span className="font-mono text-foreground">${gear.price * 6}</span>
             </div>
             <div className="mt-3 flex items-center justify-between text-sm text-ink-muted">
               <span>Service fee</span>
@@ -91,13 +135,13 @@ export default function GearDetailPage() {
             <div className="mt-4 border-t border-border pt-4">
               <div className="flex items-center justify-between text-base font-medium text-foreground">
                 <span>Total</span>
-                <span className="font-mono">$180</span>
+                <span className="font-mono">${gear.price * 6 + 12}</span>
               </div>
             </div>
           </div>
 
           <Button asChild size="lg" className="mt-6 h-12 w-full rounded-xl bg-accent text-white hover:bg-accent/90">
-            <Link href="/payment/success">Reserve — $180</Link>
+            <Link href="/payment/success">Reserve — ${gear.price * 6 + 12}</Link>
           </Button>
         </aside>
       </div>

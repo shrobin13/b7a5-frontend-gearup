@@ -1,13 +1,17 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, Compass, Flame, MapPin, ShieldCheck, TentTree } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getAllGear } from "@/services/gear";
 import { GearCard } from "@/components/shared/gear-card";
 import { Button } from "@/components/ui/button";
 
-const featuredGear = [
-  { name: "Trail Pro Tent", category: "Tent", price: 28, rating: 4.9, available: true },
-  { name: "Summit Pack", category: "Backpack", price: 18, rating: 4.8, available: true },
-  { name: "Camp Lantern", category: "Camp", price: 12, rating: 4.7, available: false },
-  { name: "Alpine Stove", category: "Cookware", price: 21, rating: 4.9, available: true },
+const fallbackGear = [
+  { id: "trail-pro-tent", name: "Trail Pro Tent", category: "Tent", price: 28, rating: 4.9, available: true },
+  { id: "summit-pack", name: "Summit Pack", category: "Backpack", price: 18, rating: 4.8, available: true },
+  { id: "camp-lantern", name: "Camp Lantern", category: "Camp", price: 12, rating: 4.7, available: false },
+  { id: "alpine-stove", name: "Alpine Stove", category: "Cookware", price: 21, rating: 4.9, available: true },
 ];
 
 const categories = [
@@ -25,6 +29,43 @@ const steps = [
 ];
 
 export default function HomePage() {
+  const [featuredGear, setFeaturedGear] = useState(fallbackGear);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadGear = async () => {
+      try {
+        const gear = await getAllGear();
+
+        if (!isMounted || !Array.isArray(gear) || !gear.length) {
+          return;
+        }
+
+        const mapped = gear
+          .map((item) => ({
+            id: item.id ?? item._id ?? item.name,
+            name: item.name,
+            category: item.category ?? "Camp",
+            price: Number(item.pricePerDay ?? 0),
+            rating: Number(item.rating ?? 4.5),
+            available: (item.stock ?? 0) > 0,
+          }))
+          .slice(0, 4);
+
+        setFeaturedGear(mapped);
+      } catch {
+        // Keep the static fallback if the API is unavailable.
+      }
+    };
+
+    void loadGear();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <main className="pb-16">
       <section className="relative overflow-hidden">
@@ -75,7 +116,7 @@ export default function HomePage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {featuredGear.slice(0, 4).map((item) => (
-                  <GearCard key={item.name} item={item} compact />
+                  <GearCard key={item.id ?? item.name} item={item} compact />
                 ))}
               </div>
             </div>
@@ -117,7 +158,7 @@ export default function HomePage() {
 
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {featuredGear.map((item) => (
-            <GearCard key={item.name} item={item} />
+            <GearCard key={item.id ?? item.name} item={item} />
           ))}
         </div>
       </section>

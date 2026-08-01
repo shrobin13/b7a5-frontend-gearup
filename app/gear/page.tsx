@@ -1,20 +1,59 @@
+"use client";
+
 import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getAllGear } from "@/services/gear";
 import { GearCard } from "@/components/shared/gear-card";
 import { Button } from "@/components/ui/button";
 
-const items = [
-  { name: "Trail Pro Tent", category: "Tent", price: 28, rating: 4.9, available: true },
-  { name: "Summit Pack", category: "Backpack", price: 18, rating: 4.8, available: true },
-  { name: "Alpine Stove", category: "Camp", price: 21, rating: 4.9, available: true },
-  { name: "Glide Bike", category: "Cycling", price: 36, rating: 4.7, available: false },
-  { name: "Peak Lantern", category: "Lighting", price: 12, rating: 4.5, available: true },
-  { name: "River Trek Boots", category: "Footwear", price: 24, rating: 4.8, available: true },
-  { name: "Contour Map Kit", category: "Navigation", price: 15, rating: 4.6, available: true },
-  { name: "Basecamp Chair", category: "Camp", price: 14, rating: 4.7, available: false },
+const fallbackItems = [
+  { id: "trail-pro-tent", name: "Trail Pro Tent", category: "Tent", price: 28, rating: 4.9, available: true },
+  { id: "summit-pack", name: "Summit Pack", category: "Backpack", price: 18, rating: 4.8, available: true },
+  { id: "alpine-stove", name: "Alpine Stove", category: "Camp", price: 21, rating: 4.9, available: true },
+  { id: "glide-bike", name: "Glide Bike", category: "Cycling", price: 36, rating: 4.7, available: false },
+  { id: "peak-lantern", name: "Peak Lantern", category: "Lighting", price: 12, rating: 4.5, available: true },
+  { id: "river-trek-boots", name: "River Trek Boots", category: "Footwear", price: 24, rating: 4.8, available: true },
+  { id: "contour-map-kit", name: "Contour Map Kit", category: "Navigation", price: 15, rating: 4.6, available: true },
+  { id: "basecamp-chair", name: "Basecamp Chair", category: "Camp", price: 14, rating: 4.7, available: false },
 ];
 
 export default function GearPage() {
+  const [items, setItems] = useState(fallbackItems);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadGear = async () => {
+      try {
+        const gear = await getAllGear();
+
+        if (!isMounted || !Array.isArray(gear) || !gear.length) {
+          return;
+        }
+
+        const mapped = gear.map((item) => ({
+          id: item.id ?? item._id ?? item.name,
+          name: item.name,
+          category: item.category ?? "Camp",
+          price: Number(item.pricePerDay ?? 0),
+          rating: Number(item.rating ?? 4.5),
+          available: (item.stock ?? 0) > 0,
+        }));
+
+        setItems(mapped);
+      } catch {
+        // Use the fallback catalog when the API is unavailable.
+      }
+    };
+
+    void loadGear();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -72,7 +111,7 @@ export default function GearPage() {
 
         <section>
           <div className="mb-5 flex items-center justify-between">
-            <p className="text-sm text-ink-muted">Showing 8 items</p>
+            <p className="text-sm text-ink-muted">Showing {items.length} items</p>
             <Button variant="outline" size="sm" className="rounded-lg">
               Sort: Recommended
             </Button>
@@ -80,7 +119,7 @@ export default function GearPage() {
 
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {items.map((item) => (
-              <GearCard key={item.name} item={item} />
+              <GearCard key={item.id ?? item.name} item={item} />
             ))}
           </div>
         </section>
