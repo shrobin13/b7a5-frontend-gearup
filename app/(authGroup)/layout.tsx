@@ -1,7 +1,5 @@
 
 import type { Metadata } from "next";
-import { SiteFooter } from "@/components/layout/site-footer";
-import { SiteHeader } from "@/components/layout/site-header";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
@@ -9,22 +7,12 @@ export const metadata: Metadata = {
   description: "Rent Sports & Outdoor Gear Instantly",
 };
 
-const AuthGroupLayout = async(
-    {
+const AuthGroupLayout = async ({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>
-) => {
-  return (
-        <>
-        <SiteHeader />
-            <Suspense fallback={<div>Loading...</div>}>
-                {children}
-            </Suspense>
-        <SiteFooter />
-        </>
-  );
-}
+}>) => {
+  return <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>;
+};
 
 export default AuthGroupLayout;
