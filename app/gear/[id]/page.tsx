@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Star } from "lucide-react";
+import { ArrowLeft, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -17,15 +17,18 @@ export default function GearDetailPage() {
           <p className="text-[0.7rem] uppercase tracking-[0.2em] text-accent">Gear detail</p>
           <h1 className="mt-2 font-display text-4xl text-ink md:text-5xl">Trail Pro Tent</h1>
         </div>
-        <Button asChild variant="outline" className="rounded-xl">
-          <Link href="/gear">Back to catalog</Link>
+        <Button asChild variant="outline" className="rounded-xl border-border bg-background">
+          <Link href="/gear" className="inline-flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to catalog
+          </Link>
         </Button>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <section>
           <div className="grid gap-4 md:grid-cols-[1.5fr_0.5fr]">
-            <div className="h-[420px] rounded-[2rem] border border-border bg-gradient-to-br from-accent-soft via-surface-muted to-pine-soft" />
+            <div className="h-[420px] rounded-[2rem] border border-border bg-gradient-to-br from-accent-soft via-surface-muted to-pine-soft shadow-[0_18px_42px_rgba(26,36,32,0.04)]" />
             <div className="grid gap-4">
               <div className="h-24 rounded-[1.5rem] border border-border bg-surface-muted" />
               <div className="h-24 rounded-[1.5rem] border border-border bg-surface-muted" />
@@ -93,8 +96,8 @@ export default function GearDetailPage() {
             </div>
           </div>
 
-          <Button size="lg" className="mt-6 h-12 w-full rounded-xl">
-            Reserve — $180
+          <Button asChild size="lg" className="mt-6 h-12 w-full rounded-xl bg-accent text-white hover:bg-accent/90">
+            <Link href="/payment/success">Reserve — $180</Link>
           </Button>
         </aside>
       </div>
