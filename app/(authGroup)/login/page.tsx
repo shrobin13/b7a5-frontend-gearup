@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { login } from "@/services/auth";
+import { useAuthStore } from "@/store/auth-store";
 import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
+  const setAuth = useAuthStore((state) => state.setAuth);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
@@ -21,7 +23,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(form);
+      const response = await login(form);
+      const token = response.token ?? response.accessToken ?? null;
+
+      if (!token) {
+        throw new Error("Login response did not include an auth token");
+      }
+
+      setAuth(token, response.user ?? { email: form.email, name: form.email.split("@")[0], role: "CUSTOMER" });
       toast.success("Login successful");
       router.push("/dashboard");
     } catch (error) {
