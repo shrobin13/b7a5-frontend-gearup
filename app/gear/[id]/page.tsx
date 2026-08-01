@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export default function GearDetailPage({ params }: { params: { id: string } }) {
+export default function GearDetailPage() {
   return (
     <main className="mx-auto max-w-4xl px-6 py-12">
       <div className="rounded-3xl border bg-card p-6 shadow-sm">

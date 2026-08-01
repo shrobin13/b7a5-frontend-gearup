@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api";
-import type { AppUser, Gear } from "@/types";
+import type { AppUser, Gear, Rental } from "@/types";
 
 export async function getAdminUsers(token: string) {
   return apiRequest<AppUser[]>("/api/admin/users", { method: "GET" }, token);
@@ -17,5 +17,5 @@ export async function getAdminGear(token: string) {
 }
 
 export async function getAdminRentals(token: string) {
-  return apiRequest<any[]>("/api/admin/rentals", { method: "GET" }, token);
+  return apiRequest<Rental[]>("/api/admin/rentals", { method: "GET" }, token);
 }
