@@ -9,6 +9,7 @@ const navItems = [
   { href: "/", label: "Home" },
   { href: "/gear", label: "Browse Gear" },
   { href: "/about", label: "How it works" },
+  { href: "/dashboard", label: "Dashboard" },
 ];
 
 export function SiteHeader() {

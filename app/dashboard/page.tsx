@@ -1,7 +1,15 @@
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { MetricCard } from "@/components/shared/metric-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const sidebarItems = [
+  { href: "/dashboard", label: "Overview" },
+  { href: "/dashboard/orders", label: "Orders" },
+  { href: "/dashboard/payments", label: "Payments" },
+  { href: "/dashboard/profile", label: "Profile" },
+];
 
 const activeRentals = [
   { name: "Trail Pro Tent", dates: "Aug 12 – Aug 18", status: "active" },
@@ -10,13 +18,13 @@ const activeRentals = [
 
 export default function DashboardPage() {
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <DashboardShell title="Account" accent="accent" items={sidebarItems}>
       <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-[0.7rem] uppercase tracking-[0.2em] text-accent">Customer dashboard</p>
           <h1 className="mt-2 font-display text-4xl text-ink">Welcome back, Alex</h1>
         </div>
-        <Button className="rounded-xl">Book a new rental</Button>
+        <Button className="rounded-xl bg-accent text-white hover:bg-accent/90">Book a new rental</Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -59,6 +67,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </DashboardShell>
   );
 }

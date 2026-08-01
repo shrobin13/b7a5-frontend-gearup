@@ -1,17 +1,27 @@
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { EmptyState } from "@/components/shared/empty-state";
+
+const sidebarItems = [
+  { href: "/dashboard", label: "Overview" },
+  { href: "/dashboard/orders", label: "Orders" },
+  { href: "/dashboard/payments", label: "Payments" },
+  { href: "/dashboard/profile", label: "Profile" },
+];
 
 export default function PaymentsPage() {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <h1 className="text-3xl font-bold">Payments</h1>
-      <div className="mt-6">
-        <EmptyState
-          title="No payment history"
-          description="Completed charges and checkout receipts will appear here."
-          actionLabel="Browse gear"
-          href="/gear"
-        />
+    <DashboardShell title="Account" accent="accent" items={sidebarItems}>
+      <div className="mb-8">
+        <p className="text-[0.7rem] uppercase tracking-[0.2em] text-accent">Payments</p>
+        <h1 className="mt-2 font-display text-4xl text-ink">Payment history</h1>
       </div>
-    </main>
+
+      <EmptyState
+        title="No payment history"
+        description="Completed charges and checkout receipts will appear here."
+        actionLabel="Browse gear"
+        href="/gear"
+      />
+    </DashboardShell>
   );
 }
