@@ -1,50 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { login } from "@/services/auth";
-import type { AppUser } from "@/types";
 import { useAuthStore } from "@/store/auth-store";
-import { toast } from "sonner";
+import type { AppUser } from "@/types";
+
+function getRedirectPath(role?: string) {
+  switch (role) {
+    case "ADMIN":
+      return "/admin";
+    case "PROVIDER":
+      return "/provider";
+    default:
+      return "/dashboard";
+  }
+}
 
 export default function LoginPage() {
+  const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [pending, setPending] = useState(false);
 
-/*   function buildFallbackUser(): AppUser {
-    return {
-      email: form.email,
-      name: form.email.split("@")[0],
-      role: "CUSTOMER",
-    };
-   */}
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get("email")?.toString().trim();
+    const password = formData.get("password")?.toString();
 
     try {
-      const response = await login(form);
-      const user = response.user ;
-      const role = user.role;
-      const authUser = { ...user, role } satisfies AppUser;
-      setAuth(authUser);
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        cache: "no-store",
+      });
 
-      toast.success("Login successful");
+      const payload = await response.json();
 
-      const redirectPath = role === "PROVIDER" ? "/provider" : role === "ADMIN" ? "/admin" : "/dashboard";
-      window.location.assign(redirectPath);
+      if (!response.ok || !payload.success) {
+        toast.error(payload.message || "Login failed.");
+        return;
+      }
+
+      const user = (payload.user ?? null) as AppUser | null;
+
+      // Update the store immediately. Don't rely on Providers' one-time
+      // hydrate() to notice we're logged in — it only runs once on app mount
+      // and this login is a client-side navigation, not a full page reload.
+      setAuth(user);
+
+      toast.success(payload.message || "Login successful!");
+      router.replace(getRedirectPath(user?.role));
+      router.refresh();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Login failed";
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : "Something went wrong.");
     } finally {
-      setLoading(false);
+      setPending(false);
     }
   }
 
@@ -55,9 +76,15 @@ export default function LoginPage() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-lg font-display text-white">
             G
           </div>
+
           <div>
-            <p className="text-[0.7rem] uppercase tracking-[0.2em] text-ink-muted">Welcome back</p>
-            <h1 className="mt-2 font-display text-3xl text-ink">Log in</h1>
+            <p className="text-[0.7rem] uppercase tracking-[0.2em] text-ink-muted">
+              Welcome back
+            </p>
+
+            <h1 className="mt-2 font-display text-3xl text-ink">
+              Log in
+            </h1>
           </div>
         </CardHeader>
 
@@ -67,41 +94,45 @@ export default function LoginPage() {
               <label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email
               </label>
+
               <Input
                 id="email"
+                name="email"
                 type="email"
                 placeholder="you@example.com"
-                value={form.email}
-                onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                autoComplete="email"
                 className="h-11 rounded-xl border-border bg-surface-muted"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between">
                 <label htmlFor="password" className="text-sm font-medium text-foreground">
                   Password
                 </label>
+
                 <Link href="/login" className="text-xs font-medium text-accent hover:text-accent-hover">
                   Forgot?
                 </Link>
               </div>
+
               <div className="relative">
                 <Input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
-                  value={form.password}
-                  onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                  autoComplete="current-password"
                   className="h-11 rounded-xl border-border bg-surface-muted pr-11"
                   required
                 />
+
                 <button
                   type="button"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-3 flex items-center text-ink-muted transition-colors hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-3 flex items-center text-ink-muted hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -109,18 +140,24 @@ export default function LoginPage() {
             </div>
 
             <div className="flex items-center gap-2 text-sm text-ink-muted">
-              <input id="remember" type="checkbox" className="h-4 w-4 rounded border-border text-accent focus:ring-accent" />
+              <input
+                id="remember"
+                type="checkbox"
+                className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
+              />
+
               <label htmlFor="remember">Remember me</label>
             </div>
 
-            <Button type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={loading}>
-              {loading ? "Logging in..." : "Log in"}
+            <Button type="submit" size="lg" className="h-12 w-full rounded-xl" disabled={pending}>
+              {pending ? "Logging in..." : "Log in"}
             </Button>
 
             <div className="relative my-2">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-border" />
               </div>
+
               <div className="relative flex justify-center text-xs uppercase tracking-[0.2em] text-ink-muted">
                 <span className="bg-surface px-2">or</span>
               </div>
@@ -138,4 +175,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

@@ -1,23 +1,49 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/provider", "/admin"];
+const AUTH_ROUTES = ["/login", "/register"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get("gearup-access-token")?.value;
-  const role = request.cookies.get("gearup-role")?.value ?? null;
-  // console.log(token,'token/* ');
-  // console.log(role,'role'); */
 
-  if (PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix)) && !token) {
+  const accessToken = request.cookies.get("gearup-access-token")?.value;
+  const role = request.cookies.get("gearup-role")?.value;
+
+  const isAuthenticated = !!accessToken;
+
+  // Redirect guests away from protected routes
+  if (
+    (pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/provider") ||
+      pathname.startsWith("/admin")) &&
+    !isAuthenticated
+  ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (pathname.startsWith("/provider") && !["PROVIDER", "ADMIN"].includes(role ?? "")) {
+  // Prevent logged in users from visiting login/register
+  if (AUTH_ROUTES.includes(pathname) && isAuthenticated) {
+    switch (role) {
+      case "ADMIN":
+        return NextResponse.redirect(new URL("/admin", request.url));
+
+      case "PROVIDER":
+        return NextResponse.redirect(new URL("/provider", request.url));
+
+      default:
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
+  // Provider routes
+  if (
+    pathname.startsWith("/provider") &&
+    role !== "PROVIDER" &&
+    role !== "ADMIN"
+  ) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  // Admin routes
   if (pathname.startsWith("/admin") && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
@@ -27,10 +53,10 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/login",
+    "/register",
     "/dashboard/:path*",
     "/provider/:path*",
     "/admin/:path*",
-    "/login",
-    "/register",
   ],
 };

@@ -1,4 +1,5 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+export const API_BASE_URL = process.env.BACKEND_API_URL ?? "";
+
 
 export type ApiResponse<T> = T;
 export type ApiEnvelope<T> = {
@@ -177,6 +178,7 @@ export async function apiRequest<T>(
   options: RequestInit = {},
   token?: string | null
 ): Promise<T> {
+
   const headers = new Headers(options.headers || {});
 
   if (!(options.body instanceof FormData)) {
