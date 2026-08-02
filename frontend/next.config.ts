@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const API_TARGET = process.env.NEXT_PUBLIC_API_URL ?? "https://gearup-igqw.onrender.com";
+const API_TARGET = process.env.BACKEND_API_URL ?? "https://gearup-igqw.onrender.com";
 
 const nextConfig: NextConfig = {
   async rewrites() {

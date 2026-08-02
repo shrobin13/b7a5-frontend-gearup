@@ -5,7 +5,7 @@ const AUTH_ROUTES = ["/login", "/register"];
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const accessToken = request.cookies.get("gearup-access-token")?.value;
+  const accessToken = request.cookies.get("access-token")?.value;
   const role = request.cookies.get("gearup-role")?.value;
 
   const isAuthenticated = !!accessToken;

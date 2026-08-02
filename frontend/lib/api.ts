@@ -176,8 +176,9 @@ function getErrorMessageFromPayload(payload: unknown): string {
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
-  token?: string | null
+  token?: string | null,
 ): Promise<T> {
+  console.log("APIREQUEST_V2_ACTIVE →", endpoint);
 
   const headers = new Headers(options.headers || {});
 
@@ -191,13 +192,17 @@ export async function apiRequest<T>(
 
   const isAbsoluteUrl = /^https?:\/\//i.test(endpoint);
   const isInternalApiRoute = endpoint.startsWith("/api/");
-  const resolvedEndpoint = isAbsoluteUrl || !isInternalApiRoute ? endpoint : endpoint;
+  const resolvedEndpoint =
+    isAbsoluteUrl || !isInternalApiRoute ? endpoint : endpoint;
 
-  const response = await fetch(isInternalApiRoute ? resolvedEndpoint : `${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-    cache: "no-store",
-  });
+  const response = await fetch(
+    isInternalApiRoute ? resolvedEndpoint : `${API_BASE_URL}${endpoint}`,
+    {
+      ...options,
+      headers,
+      cache: "no-store",
+    },
+  );
 
   const text = await response.text();
   const payload = parseJsonBody<T>(text);

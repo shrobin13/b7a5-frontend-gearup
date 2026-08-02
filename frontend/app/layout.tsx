@@ -20,7 +20,7 @@ export default function RootLayout({
         <Providers>
           <div className="min-h-screen bg-background text-foreground">
             <SiteHeader />
-            <div className="flex-1">{children}</div>
+            <div className="flex-1 min-h-screen">{children}</div>
             <SiteFooter />
           </div>
         </Providers>

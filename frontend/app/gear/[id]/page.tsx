@@ -73,7 +73,10 @@ export default function GearDetailPage() {
           const [nextReviews, nextRentals] = await Promise.all([getGearReviews(id), getMyRentals()]);
           setReviews(Array.isArray(nextReviews) ? nextReviews : []);
           const bookedDates = (Array.isArray(nextRentals) ? nextRentals : [])
-            .filter((rental) => rental.gear?._id === item?._id || rental.gear?.id === item?.id)
+            .filter((rental) => {
+              const gearItem = (rental as { items?: { gearItem?: { id?: string; _id?: string } }[] }).items?.[0]?.gearItem;
+              return gearItem?.id === item?.id || gearItem?._id === item?._id;
+            })
             .flatMap((rental) => {
               const start = rental.startDate ? new Date(rental.startDate) : null;
               const end = rental.endDate ? new Date(rental.endDate) : null;
@@ -135,9 +138,8 @@ export default function GearDetailPage() {
       });
 
       const payment = await createPayment({
-        rentalId: rental._id ?? rental.id,
-        amount: total,
-        currency: "usd",
+        rentalOrderId: rental._id ?? rental.id,
+        provider: "STRIPE",
       });
 
       const redirectUrl = payment.url ?? payment.checkoutUrl ?? payment.paymentUrl ?? payment.redirectUrl ?? payment.sessionUrl;

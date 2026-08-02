@@ -1,3 +1,4 @@
+import { isValidElement } from "react";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -40,6 +41,8 @@ export function DataTable<T extends Record<string, unknown>>({
                   <TableCell key={String(column.key)} className="py-3 text-sm text-foreground">
                     {column.key === "status" && typeof cellValue === "string" ? (
                       <StatusBadge status={cellValue} />
+                    ) : isValidElement(cellValue) ? (
+                      cellValue
                     ) : (
                       <span>{String(cellValue)}</span>
                     )}

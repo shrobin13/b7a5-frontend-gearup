@@ -1,24 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Moon, SunMedium } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
-
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/gear", label: "Browse Gear" },
-  { href: "/about", label: "How it works" },
-  { href: "/dashboard", label: "Dashboard" },
-];
+import { logout } from "@/services/auth";
 
 export function SiteHeader() {
   const { resolvedTheme, setTheme, mounted } = useTheme();
   const { isAuthenticated, user, clearAuth } = useAuthStore();
+  const router = useRouter();
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch {
+      // proceed with local clear even if the API call fails
+    } finally {
+      clearAuth();
+      router.push("/");
+      router.refresh();
+    }
+  }
 
   const isDarkMode = mounted && resolvedTheme === "dark";
+
+  const dashboardHref =
+    user?.role === "ADMIN"
+      ? "/admin"
+      : user?.role === "PROVIDER"
+        ? "/provider"
+        : "/dashboard";
+
+  const navItems = [
+    { href: "/", label: "Home" },
+    { href: "/gear", label: "Browse Gear" },
+    { href: "/about", label: "How it works" },
+    { href: dashboardHref, label: "Dashboard" },
+  ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-xl">
@@ -32,7 +53,7 @@ export function SiteHeader() {
 
         <nav className="hidden items-center gap-6 text-sm text-ink-muted md:flex">
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href} className="transition-colors hover:text-foreground">
+            <Link key={item.label} href={item.href} className="transition-colors hover:text-foreground">
               {item.label}
             </Link>
           ))}
@@ -57,9 +78,9 @@ export function SiteHeader() {
                 {user?.name ?? "Member"}
               </span>
               <Button asChild variant="outline" size="sm">
-                <Link href="/dashboard">Dashboard</Link>
+                <Link href={dashboardHref}>Dashboard</Link>
               </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={clearAuth}>
+              <Button type="button" variant="secondary" size="sm" onClick={handleLogout}>
                 Log out
               </Button>
             </>

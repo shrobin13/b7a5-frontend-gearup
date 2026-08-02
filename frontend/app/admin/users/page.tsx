@@ -56,14 +56,17 @@ export default function AdminUsersPage() {
   const openEditor = (user: AppUser) => {
     setEditingUser(user);
     setRole((user.role as "CUSTOMER" | "PROVIDER" | "ADMIN") ?? "CUSTOMER");
-    setIsActive(Boolean(user.isActive ?? true));
+    setIsActive(user.status ? user.status === "ACTIVE" : user.isActive !== false);
   };
 
   const handleSave = async () => {
     if (!editingUser?.id && !editingUser?._id) return;
     setSaving(true);
     try {
-      await updateUserRole(editingUser.id ?? editingUser._id ?? "", { role, isActive });
+      await updateUserRole(editingUser.id ?? editingUser._id ?? "", {
+        role,
+        status: isActive ? "ACTIVE" : "SUSPENDED",
+      });
       toast.success("User updated");
       const nextUsers = await getAdminUsers();
       setUsers(Array.isArray(nextUsers) ? nextUsers : []);
@@ -97,7 +100,7 @@ export default function AdminUsersPage() {
         ]}
         data={users.map((user) => ({
           ...user,
-          status: user.isActive === false ? "SUSPENDED" : "ACTIVE",
+          status: user.status ?? (user.isActive === false ? "SUSPENDED" : "ACTIVE"),
           actions: (
             <Dialog>
               <DialogTrigger asChild>

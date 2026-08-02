@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const AUTH_COOKIE_NAMES = {
-  access: "gearup-access-token",
+  access: "access-token",
   refresh: "gearup-refresh-token",
   role: "gearup-role",
 } as const;
@@ -73,9 +73,28 @@ export async function setSessionCookies(cookieStore: Awaited<ReturnType<typeof c
 }
 
 export async function clearSessionCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
-  cookieStore.set(AUTH_COOKIE_NAMES.access, "", { ...getCookieFlags(0, true), maxAge: 0 });
-  cookieStore.set(AUTH_COOKIE_NAMES.refresh, "", { ...getCookieFlags(0, true), maxAge: 0 });
-  cookieStore.set(AUTH_COOKIE_NAMES.role, "", { ...getCookieFlags(0, false), maxAge: 0 });
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // Explicitly expire each cookie with matching attributes so browsers honour the deletion
+  for (const name of [AUTH_COOKIE_NAMES.access, AUTH_COOKIE_NAMES.refresh]) {
+    cookieStore.set(name, "", {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+      expires: new Date(0),
+    });
+  }
+
+  cookieStore.set(AUTH_COOKIE_NAMES.role, "", {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+    expires: new Date(0),
+  });
 }
 
 export function getTokenFromPayload(payload: unknown, key: "accessToken" | "refreshToken" | "token") {

@@ -71,7 +71,9 @@ export default function AdminGearPage() {
           ]}
           data={gear.map((item) => ({
             ...item,
-            provider: item.provider ?? "Unassigned",
+            provider: typeof item.provider === "object" && item.provider !== null
+              ? (item.provider as { name?: string }).name || "Unassigned"
+              : item.provider || "Unassigned",
             condition: item.condition ?? "Pending",
           }))}
         />

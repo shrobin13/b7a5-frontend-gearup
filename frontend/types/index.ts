@@ -9,6 +9,7 @@ export type AppUser = {
   phone?: string;
   address?: string;
   isActive?: boolean;
+  status?: "ACTIVE" | "SUSPENDED";
 };
 
 export type Gear = {

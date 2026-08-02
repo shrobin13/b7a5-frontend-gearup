@@ -70,10 +70,10 @@ export default function AdminRentalsPage() {
             { key: "total", label: "Total" },
             { key: "status", label: "Status" },
           ]}
-          data={rentals.map((rental) => ({
+          data={rentals.map((rental: any) => ({
             ...rental,
-            id: rental._id ?? "unknown",
-            gear: rental.gear?.name ?? "Rental item",
+            id: rental.id ?? rental._id ?? "unknown",
+            gear: rental.items?.[0]?.gearItem?.name ?? rental.gear?.name ?? "Rental item",
             total: rental.totalAmount ? `$${rental.totalAmount}` : "—",
           }))}
         />
