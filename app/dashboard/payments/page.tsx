@@ -15,37 +15,35 @@ const sidebarItems = [
   { href: "/dashboard/profile", label: "Profile" },
 ];
 
-const fallbackPayments: Payment[] = [
-  { _id: "fallback-payment-1", status: "paid", amount: 125, currency: "USD" },
-  { _id: "fallback-payment-2", status: "paid", amount: 98, currency: "USD" },
-];
 
 export default function PaymentsPage() {
   const router = useRouter();
-  const { isAuthenticated, token } = useAuthStore();
-  const [payments, setPayments] = useState<Payment[]>(fallbackPayments);
+  const { isAuthenticated, hasHydrated } = useAuthStore();
+  const [payments, setPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       router.replace("/login");
       return;
     }
 
-    const authToken = token;
-
     async function loadData() {
       try {
-        const nextPayments = await getMyPayments(authToken);
-        setPayments(nextPayments ?? fallbackPayments);
+        const nextPayments = await getMyPayments();
+        setPayments(nextPayments ?? []);
       } catch {
-        setPayments(fallbackPayments);
+        setPayments([]);
       }
     }
 
     void loadData();
-  }, [isAuthenticated, router, token]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return null;
   }
 

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { getProviderGear } from "@/services/provider";
 import { useAuthStore } from "@/store/auth-store";
@@ -16,37 +17,39 @@ const sidebarItems = [
   { href: "/provider/add-gear", label: "Add gear" },
 ];
 
-const fallbackInventory: Gear[] = [
-  { _id: "fallback-gear-1", name: "Trail Pro Tent", stock: 4, pricePerDay: 28, condition: "Good" },
-  { _id: "fallback-gear-2", name: "Summit Pack", stock: 7, pricePerDay: 18, condition: "Excellent" },
-];
 
 export default function ProviderInventoryPage() {
   const router = useRouter();
-  const { isAuthenticated, token } = useAuthStore();
-  const [inventory, setInventory] = useState<Gear[]>(fallbackInventory);
+  const { isAuthenticated, hasHydrated } = useAuthStore();
+  const [inventory, setInventory] = useState<Gear[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       router.replace("/login");
       return;
     }
 
-    const authToken = token;
-
     async function loadData() {
+      setLoading(true);
       try {
-        const nextGear = await getProviderGear(authToken);
-        setInventory(nextGear ?? fallbackInventory);
+        const nextGear = await getProviderGear();
+        setInventory(Array.isArray(nextGear) ? nextGear : []);
       } catch {
-        setInventory(fallbackInventory);
+        setInventory([]);
+      } finally {
+        setLoading(false);
       }
     }
 
     void loadData();
-  }, [isAuthenticated, router, token]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return null;
   }
 
@@ -60,18 +63,24 @@ export default function ProviderInventoryPage() {
         <Button className="rounded-xl bg-pine text-white hover:bg-pine/90">+ Add gear</Button>
       </div>
 
-      <DataTable
-        columns={[
-          { key: "name", label: "Gear" },
-          { key: "stock", label: "Stock" },
-          { key: "pricePerDay", label: "Price" },
-          { key: "condition", label: "Condition" },
-        ]}
-        data={inventory.map((item) => ({
-          ...item,
-          pricePerDay: item.pricePerDay ? `$${item.pricePerDay}/day` : "—",
-        }))}
-      />
+      {loading && inventory.length === 0 ? <p className="mb-4 text-sm text-ink-muted">Loading inventory…</p> : null}
+      {!loading && !inventory.length ? (
+        <EmptyState title="No inventory found" description="You do not have any gear in inventory yet." />
+      ) : (
+        <DataTable
+          columns={[
+            { key: "name", label: "Gear" },
+            { key: "stock", label: "Stock" },
+            { key: "pricePerDay", label: "Price" },
+            { key: "condition", label: "Condition" },
+          ]}
+          data={inventory.map((item) => ({
+            ...item,
+            stock: item.stockQuantity ?? item.stock ?? 0,
+            pricePerDay: item.pricePerDay ? `$${item.pricePerDay}/day` : "—",
+          }))}
+        />
+      )}
     </DashboardShell>
   );
 }

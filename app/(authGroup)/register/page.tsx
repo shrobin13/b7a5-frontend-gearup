@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -23,23 +23,72 @@ export default function RegisterPage() {
     phone: "",
     address: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function validateForm(values = form) {
+    const nextErrors: Record<string, string> = {};
+
+    if (!values.name.trim()) {
+      nextErrors.name = "Full name is required.";
+    }
+
+    if (!values.email.trim()) {
+      nextErrors.email = "Email is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
+      nextErrors.email = "Enter a valid email address.";
+    }
+
+    if (!values.password) {
+      nextErrors.password = "Password is required.";
+    } else if (values.password.length < 8) {
+      nextErrors.password = "Password must be at least 8 characters.";
+    }
+
+    if (!values.confirmPassword) {
+      nextErrors.confirmPassword = "Please confirm your password.";
+    } else if (values.password !== values.confirmPassword) {
+      nextErrors.confirmPassword = "Passwords do not match.";
+    }
+
+    if (values.phone && values.phone.replace(/\D/g, "").length < 7) {
+      nextErrors.phone = "Enter a valid phone number.";
+    }
+
+    return nextErrors;
+  }
+
+  function handleFieldChange(field: keyof typeof form, value: string) {
+    setSubmitError(null);
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLoading(true);
+    setSubmitError(null);
+    const nextErrors = validateForm();
+    setErrors(nextErrors);
 
-    if (form.password !== form.confirmPassword) {
-      toast.error("Passwords do not match");
-      setLoading(false);
+    if (Object.keys(nextErrors).length) {
       return;
     }
+
+    setLoading(true);
 
     try {
       await register(form);
       toast.success("Registration successful");
       router.push("/login");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Registration failed");
+      const message = error instanceof Error ? error.message : "Registration failed";
+      setSubmitError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -68,10 +117,12 @@ export default function RegisterPage() {
                 id="name"
                 placeholder="Alex Carter"
                 value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => handleFieldChange("name", e.target.value)}
                 className="h-11 rounded-xl border-border bg-surface-muted"
+                aria-invalid={Boolean(errors.name)}
                 required
               />
+              {errors.name ? <p className="text-xs text-destructive">{errors.name}</p> : null}
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -83,10 +134,12 @@ export default function RegisterPage() {
                 type="email"
                 placeholder="you@example.com"
                 value={form.email}
-                onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                onChange={(e) => handleFieldChange("email", e.target.value)}
                 className="h-11 rounded-xl border-border bg-surface-muted"
+                aria-invalid={Boolean(errors.email)}
                 required
               />
+              {errors.email ? <p className="text-xs text-destructive">{errors.email}</p> : null}
             </div>
 
             <div className="space-y-2">
@@ -99,8 +152,9 @@ export default function RegisterPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={form.password}
-                  onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                  onChange={(e) => handleFieldChange("password", e.target.value)}
                   className="h-11 rounded-xl border-border bg-surface-muted pr-11"
+                  aria-invalid={Boolean(errors.password)}
                   required
                 />
                 <button
@@ -112,6 +166,7 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {errors.password ? <p className="mt-1 text-xs text-destructive">{errors.password}</p> : null}
             </div>
 
             <div className="space-y-2">
@@ -124,8 +179,9 @@ export default function RegisterPage() {
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={form.confirmPassword}
-                  onChange={(e) => setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                  onChange={(e) => handleFieldChange("confirmPassword", e.target.value)}
                   className="h-11 rounded-xl border-border bg-surface-muted pr-11"
+                  aria-invalid={Boolean(errors.confirmPassword)}
                   required
                 />
                 <button
@@ -137,6 +193,7 @@ export default function RegisterPage() {
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {errors.confirmPassword ? <p className="mt-1 text-xs text-destructive">{errors.confirmPassword}</p> : null}
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -147,9 +204,11 @@ export default function RegisterPage() {
                 id="phone"
                 placeholder="(555) 123-4567"
                 value={form.phone}
-                onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+                onChange={(e) => handleFieldChange("phone", e.target.value)}
                 className="h-11 rounded-xl border-border bg-surface-muted"
+                aria-invalid={Boolean(errors.phone)}
               />
+              {errors.phone ? <p className="text-xs text-destructive">{errors.phone}</p> : null}
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -164,6 +223,12 @@ export default function RegisterPage() {
                 className="h-11 rounded-xl border-border bg-surface-muted"
               />
             </div>
+
+            {submitError ? (
+              <p role="alert" className="text-sm text-destructive md:col-span-2">
+                {submitError}
+              </p>
+            ) : null}
 
             <Button type="submit" size="lg" className="h-12 w-full rounded-xl md:col-span-2" disabled={loading}>
               {loading ? "Creating account..." : "Create account"}

@@ -3,23 +3,14 @@
 import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
+import { EmptyState } from "@/components/shared/empty-state";
 import { getAllGear } from "@/services/gear";
 import { GearCard } from "@/components/shared/gear-card";
 import { Button } from "@/components/ui/button";
-
-const fallbackItems = [
-  { id: "trail-pro-tent", name: "Trail Pro Tent", category: "Tent", price: 28, rating: 4.9, available: true },
-  { id: "summit-pack", name: "Summit Pack", category: "Backpack", price: 18, rating: 4.8, available: true },
-  { id: "alpine-stove", name: "Alpine Stove", category: "Camp", price: 21, rating: 4.9, available: true },
-  { id: "glide-bike", name: "Glide Bike", category: "Cycling", price: 36, rating: 4.7, available: false },
-  { id: "peak-lantern", name: "Peak Lantern", category: "Lighting", price: 12, rating: 4.5, available: true },
-  { id: "river-trek-boots", name: "River Trek Boots", category: "Footwear", price: 24, rating: 4.8, available: true },
-  { id: "contour-map-kit", name: "Contour Map Kit", category: "Navigation", price: 15, rating: 4.6, available: true },
-  { id: "basecamp-chair", name: "Basecamp Chair", category: "Camp", price: 14, rating: 4.7, available: false },
-];
+import { getCategoryName } from "@/lib/utils";
 
 export default function GearPage() {
-  const [items, setItems] = useState(fallbackItems);
+  const [items, setItems] = useState<Array<{ id: string; name: string; category: string; price: number; rating: number; available: boolean }>>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -28,22 +19,24 @@ export default function GearPage() {
       try {
         const gear = await getAllGear();
 
-        if (!isMounted || !Array.isArray(gear) || !gear.length) {
+        if (!isMounted || !Array.isArray(gear)) {
           return;
         }
 
         const mapped = gear.map((item) => ({
           id: item.id ?? item._id ?? item.name,
           name: item.name,
-          category: item.category ?? "Camp",
+          category: getCategoryName(item.category),
           price: Number(item.pricePerDay ?? 0),
           rating: Number(item.rating ?? 4.5),
-          available: (item.stock ?? 0) > 0,
+          available: Boolean(item.isAvailable ?? Number(item.stockQuantity ?? item.stock ?? 0) > 0),
         }));
 
         setItems(mapped);
       } catch {
-        // Use the fallback catalog when the API is unavailable.
+        if (isMounted) {
+          setItems([]);
+        }
       }
     };
 
@@ -117,11 +110,15 @@ export default function GearPage() {
             </Button>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {items.map((item) => (
-              <GearCard key={item.id ?? item.name} item={item} />
-            ))}
-          </div>
+          {items.length ? (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {items.map((item) => (
+                <GearCard key={item.id ?? item.name} item={item} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No data available" description="There are no gear listings to show right now." />
+          )}
         </section>
       </div>
     </main>

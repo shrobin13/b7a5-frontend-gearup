@@ -17,19 +17,18 @@ const LoginForm = () => {
       refreshToken: "",
     },
   });
+
   useEffect(() => {
-    if (!state.success) return;
+    if (state.statusCode === 0) return;
 
     if (state.success) {
       toast.success(state.message || "Login successful!");
-    }
-
-    if (!state.success) {
-      toast.error(state.message || "Login Failed!");
+    } else {
+      toast.error(state.message || "Login failed!");
     }
   }, [state]);
 
-  return (
+return (
     <>
       <form action={action} className="space-y-4">
         <Card className="p-5 space-y-4">

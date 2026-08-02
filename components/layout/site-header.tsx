@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Moon, SunMedium } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -14,8 +15,10 @@ const navItems = [
 ];
 
 export function SiteHeader() {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme, mounted } = useTheme();
   const { isAuthenticated, user, clearAuth } = useAuthStore();
+
+  const isDarkMode = mounted && resolvedTheme === "dark";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-xl">
@@ -42,9 +45,10 @@ export function SiteHeader() {
             size="icon"
             aria-label="Toggle color mode"
             className="border border-border bg-surface text-foreground"
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            onClick={mounted ? () => setTheme(isDarkMode ? "light" : "dark") : undefined}
+            disabled={!mounted}
           >
-            {resolvedTheme === "dark" ? <SunMedium className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {mounted ? (isDarkMode ? <SunMedium className="h-4 w-4" /> : <Moon className="h-4 w-4" />) : <span className="h-4 w-4" />}
           </Button>
 
           {isAuthenticated ? (

@@ -6,6 +6,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { MetricCard } from "@/components/shared/metric-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getMyPayments, getMyRentals } from "@/services/customer";
 import { useAuthStore } from "@/store/auth-store";
@@ -18,47 +19,40 @@ const sidebarItems = [
   { href: "/dashboard/profile", label: "Profile" },
 ];
 
-const fallbackRentals: Rental[] = [
-  { _id: "fallback-rental-1", status: "active", totalAmount: 140, gear: { name: "Trail Pro Tent" }, startDate: "Aug 12", endDate: "Aug 18" },
-  { _id: "fallback-rental-2", status: "approved", totalAmount: 98, gear: { name: "Summit Pack" }, startDate: "Aug 22", endDate: "Aug 25" },
-];
-
-const fallbackPayments: Payment[] = [
-  { _id: "fallback-payment-1", status: "paid", amount: 125 },
-  { _id: "fallback-payment-2", status: "paid", amount: 98 },
-];
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isAuthenticated, token, user } = useAuthStore();
-  const [rentals, setRentals] = useState<Rental[]>(fallbackRentals);
-  const [payments, setPayments] = useState<Payment[]>(fallbackPayments);
+  const { isAuthenticated, user, hasHydrated } = useAuthStore();
+  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       router.replace("/login");
       return;
     }
 
-    const authToken = token;
-
     async function loadData() {
       setLoading(true);
       try {
-        const [nextRentals, nextPayments] = await Promise.all([getMyRentals(authToken), getMyPayments(authToken)]);
-        setRentals(nextRentals ?? fallbackRentals);
-        setPayments(nextPayments ?? fallbackPayments);
+        const [nextRentals, nextPayments] = await Promise.all([getMyRentals(), getMyPayments()]);
+        setRentals(nextRentals ?? []);
+        setPayments(nextPayments ?? []);
       } catch {
-        setRentals(fallbackRentals);
-        setPayments(fallbackPayments);
+        setRentals([]);
+        setPayments([]);
       } finally {
         setLoading(false);
       }
     }
 
     void loadData();
-  }, [isAuthenticated, router, token]);
+  }, [hasHydrated, isAuthenticated, router]);
 
   const displayName = user?.name ?? user?.email?.split("@")[0] ?? "Renter";
   const activeRentals = useMemo(
@@ -72,7 +66,7 @@ export default function DashboardPage() {
     ...payments.slice(0, 1).map((payment) => `Paid $${payment.amount ?? 0}`),
   ];
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return null;
   }
 
@@ -98,22 +92,26 @@ export default function DashboardPage() {
             <CardTitle className="font-display text-2xl text-ink">Your active rentals</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {activeRentals.map((rental) => (
-              <div key={rental._id ?? rental.gear?.name} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface-muted p-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="font-medium text-foreground">{rental.gear?.name ?? "Rental item"}</p>
-                  <p className="mt-1 text-sm text-ink-muted">
-                    {rental.startDate && rental.endDate ? `${rental.startDate} – ${rental.endDate}` : "Scheduled booking"}
-                  </p>
+            {activeRentals.length ? (
+              activeRentals.map((rental) => (
+                <div key={rental._id ?? rental.gear?.name} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface-muted p-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">{rental.gear?.name ?? "Rental item"}</p>
+                    <p className="mt-1 text-sm text-ink-muted">
+                      {rental.startDate && rental.endDate ? `${rental.startDate} – ${rental.endDate}` : "Scheduled booking"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <StatusBadge status={rental.status ?? "pending"} />
+                    <Button variant="outline" size="sm" className="rounded-lg">
+                      View
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <StatusBadge status={rental.status ?? "pending"} />
-                  <Button variant="outline" size="sm" className="rounded-lg">
-                    View
-                  </Button>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <EmptyState title="No data available" description="You do not have any active rentals right now." />
+            )}
           </CardContent>
         </Card>
 
@@ -122,9 +120,13 @@ export default function DashboardPage() {
             <CardTitle className="font-display text-2xl text-ink">Recent activity</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-ink-muted">
-            {recentActivity.map((activity) => (
-              <p key={activity}>{activity}</p>
-            ))}
+            {recentActivity.length ? (
+              recentActivity.map((activity) => (
+                <p key={activity}>{activity}</p>
+              ))
+            ) : (
+              <EmptyState title="No data available" description="No recent activity has been recorded yet." />
+            )}
           </CardContent>
         </Card>
       </div>

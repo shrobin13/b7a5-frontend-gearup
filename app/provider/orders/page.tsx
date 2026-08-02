@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { getProviderOrders } from "@/services/provider";
 import { useAuthStore } from "@/store/auth-store";
@@ -16,37 +17,39 @@ const sidebarItems = [
   { href: "/provider/add-gear", label: "Add gear" },
 ];
 
-const fallbackOrders: Rental[] = [
-  { _id: "fallback-order-1", status: "pending", totalAmount: 140, startDate: "Aug 12", endDate: "Aug 18", gear: { name: "Trail Pro Tent" } },
-  { _id: "fallback-order-2", status: "approved", totalAmount: 98, startDate: "Aug 22", endDate: "Aug 25", gear: { name: "Summit Pack" } },
-];
 
 export default function ProviderOrdersPage() {
   const router = useRouter();
-  const { isAuthenticated, token } = useAuthStore();
-  const [orders, setOrders] = useState<Rental[]>(fallbackOrders);
+  const { isAuthenticated, hasHydrated } = useAuthStore();
+  const [orders, setOrders] = useState<Rental[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       router.replace("/login");
       return;
     }
 
-    const authToken = token;
-
     async function loadData() {
+      setLoading(true);
       try {
-        const nextOrders = await getProviderOrders(authToken);
-        setOrders(nextOrders ?? fallbackOrders);
+        const nextOrders = await getProviderOrders();
+        setOrders(Array.isArray(nextOrders) ? nextOrders : []);
       } catch {
-        setOrders(fallbackOrders);
+        setOrders([]);
+      } finally {
+        setLoading(false);
       }
     }
 
     void loadData();
-  }, [isAuthenticated, router, token]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return null;
   }
 
@@ -62,18 +65,23 @@ export default function ProviderOrdersPage() {
         </Button>
       </div>
 
-      <DataTable
-        columns={[
-          { key: "gear", label: "Item" },
-          { key: "dates", label: "Dates" },
-          { key: "status", label: "Status" },
-        ]}
-        data={orders.map((order) => ({
-          ...order,
-          gear: order.gear?.name ?? "Rental item",
-          dates: order.startDate && order.endDate ? `${order.startDate} – ${order.endDate}` : "Scheduled",
-        }))}
-      />
+      {loading && orders.length === 0 ? <p className="mb-4 text-sm text-ink-muted">Loading orders…</p> : null}
+      {!loading && !orders.length ? (
+        <EmptyState title="No orders found" description="You do not have any booking requests right now." />
+      ) : (
+        <DataTable
+          columns={[
+            { key: "gear", label: "Item" },
+            { key: "dates", label: "Dates" },
+            { key: "status", label: "Status" },
+          ]}
+          data={orders.map((order) => ({
+            ...order,
+            gear: order.gear?.name ?? "Rental item",
+            dates: order.startDate && order.endDate ? `${order.startDate} – ${order.endDate}` : "Scheduled",
+          }))}
+        />
+      )}
     </DashboardShell>
   );
 }

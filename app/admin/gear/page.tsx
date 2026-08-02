@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
+import { EmptyState } from "@/components/shared/empty-state";
 import { getAdminGear } from "@/services/admin";
 import { useAuthStore } from "@/store/auth-store";
 import type { Gear } from "@/types";
@@ -15,37 +16,39 @@ const sidebarItems = [
   { href: "/admin/rentals", label: "Rentals" },
 ];
 
-const fallbackGear: Gear[] = [
-  { _id: "fallback-admin-gear-1", name: "Trail Pro Tent", provider: "North Peak", stock: 4, condition: "Good" },
-  { _id: "fallback-admin-gear-2", name: "Glide Bike", provider: "City Ride", stock: 2, condition: "Excellent" },
-];
 
 export default function AdminGearPage() {
   const router = useRouter();
-  const { isAuthenticated, token } = useAuthStore();
-  const [gear, setGear] = useState<Gear[]>(fallbackGear);
+  const { isAuthenticated, hasHydrated } = useAuthStore();
+  const [gear, setGear] = useState<Gear[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       router.replace("/login");
       return;
     }
 
-    const authToken = token;
-
     async function loadData() {
+      setLoading(true);
       try {
-        const nextGear = await getAdminGear(authToken);
-        setGear(nextGear ?? fallbackGear);
+        const nextGear = await getAdminGear();
+        setGear(Array.isArray(nextGear) ? nextGear : []);
       } catch {
-        setGear(fallbackGear);
+        setGear([]);
+      } finally {
+        setLoading(false);
       }
     }
 
     void loadData();
-  }, [isAuthenticated, router, token]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return null;
   }
 
@@ -56,18 +59,23 @@ export default function AdminGearPage() {
         <h1 className="mt-2 font-display text-4xl text-ink">Moderation queue</h1>
       </div>
 
-      <DataTable
-        columns={[
-          { key: "name", label: "Gear" },
-          { key: "provider", label: "Provider" },
-          { key: "condition", label: "Condition" },
-        ]}
-        data={gear.map((item) => ({
-          ...item,
-          provider: item.provider ?? "Unassigned",
-          condition: item.condition ?? "Pending",
-        }))}
-      />
+      {loading && gear.length === 0 ? <p className="mb-4 text-sm text-ink-muted">Loading gear…</p> : null}
+      {!loading && !gear.length ? (
+        <EmptyState title="No gear found" description="There is no gear data to review right now." />
+      ) : (
+        <DataTable
+          columns={[
+            { key: "name", label: "Gear" },
+            { key: "provider", label: "Provider" },
+            { key: "condition", label: "Condition" },
+          ]}
+          data={gear.map((item) => ({
+            ...item,
+            provider: item.provider ?? "Unassigned",
+            condition: item.condition ?? "Pending",
+          }))}
+        />
+      )}
     </DashboardShell>
   );
 }

@@ -1,21 +1,25 @@
-import { apiRequest } from "@/lib/api";
+import { apiRequest, unwrapApiEnvelope, type ApiEnvelope } from "@/lib/api";
 import type { AppUser, Gear, Rental } from "@/types";
 
-export async function getAdminUsers(token: string) {
-  return apiRequest<AppUser[]>("/api/admin/users", { method: "GET" }, token);
+export async function getAdminUsers() {
+  const response = await apiRequest<ApiEnvelope<AppUser[]> | AppUser[]>("/api/admin/users", { method: "GET" });
+  return unwrapApiEnvelope(response);
 }
 
-export async function updateUserRole(id: string, payload: Record<string, unknown>, token: string) {
-  return apiRequest<AppUser>(`/api/admin/users/${id}`, {
+export async function updateUserRole(id: string, payload: Record<string, unknown>) {
+  const response = await apiRequest<ApiEnvelope<AppUser> | AppUser>(`/api/admin/users/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
-  }, token);
+  });
+  return unwrapApiEnvelope(response);
 }
 
-export async function getAdminGear(token: string) {
-  return apiRequest<Gear[]>("/api/admin/gear", { method: "GET" }, token);
+export async function getAdminGear() {
+  const response = await apiRequest<ApiEnvelope<Gear[]> | Gear[]>("/api/admin/gear", { method: "GET" });
+  return unwrapApiEnvelope(response);
 }
 
-export async function getAdminRentals(token: string) {
-  return apiRequest<Rental[]>("/api/admin/rentals", { method: "GET" }, token);
+export async function getAdminRentals() {
+  const response = await apiRequest<ApiEnvelope<Rental[]> | Rental[]>("/api/admin/rentals", { method: "GET" });
+  return unwrapApiEnvelope(response);
 }

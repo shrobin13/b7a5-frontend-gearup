@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -15,19 +16,29 @@ const sidebarItems = [
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, hasHydrated } = useAuthStore();
 
   useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
     if (!isAuthenticated) {
       router.replace("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return null;
   }
 
   const displayName = user?.name ?? user?.email?.split("@")[0] ?? "Member";
+  const profileFields = [
+    { label: "Name", value: displayName },
+    { label: "Email", value: user?.email ?? "—" },
+    { label: "Role", value: user?.role ?? "CUSTOMER" },
+    { label: "Status", value: user?.isActive === false ? "SUSPENDED" : "ACTIVE" },
+  ];
 
   return (
     <DashboardShell title="Account" accent="accent" items={sidebarItems}>
@@ -36,14 +47,20 @@ export default function ProfilePage() {
         <h1 className="mt-2 font-display text-4xl text-ink">Your account</h1>
       </div>
 
-      <Card className="border border-border bg-surface">
-        <CardContent className="space-y-3 p-6 text-sm text-ink-muted">
-          <p className="font-medium text-foreground">{displayName}</p>
-          <p>{user?.email ?? "member@example.com"}</p>
-          <p>Member since 2025</p>
-          <p>Preferred locations: Tahoe, Yosemite, Bend</p>
-        </CardContent>
-      </Card>
+      {user ? (
+        <Card className="border border-border bg-surface">
+          <CardContent className="space-y-3 p-6 text-sm text-ink-muted">
+            {profileFields.map((field) => (
+              <div key={field.label} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-muted px-3 py-2">
+                <span className="text-ink-muted">{field.label}</span>
+                <span className="font-medium text-foreground">{field.value}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : (
+        <EmptyState title="No profile available" description="We could not load your profile details right now." />
+      )}
     </DashboardShell>
   );
 }

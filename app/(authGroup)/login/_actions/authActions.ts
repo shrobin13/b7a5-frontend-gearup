@@ -10,32 +10,46 @@ type LoginState = {
     }
 }
 
+function getAppBaseUrl() {
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+        return process.env.NEXT_PUBLIC_APP_URL;
+    }
+
+    if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
+    }
+
+    return "http://localhost:3000";
+}
+
 export const loginAction = async (prevState: LoginState, formData: FormData): Promise<LoginState> => {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+        const response = await fetch(`${getAppBaseUrl()}/api/auth/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({ email, password }),
+            cache: "no-store",
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => null);
+        console.log(data, 'data');
 
         if (!response.ok) {
-            throw new Error(data.message || "Login failed");
+            throw new Error(data?.message || "Login failed");
         }
 
         return {
             success: true,
             statusCode: response.status,
-            message: "Login successful",
+            message: data?.message || "Login successful",
             data: {
-                accessToken: data.accessToken,
-                refreshToken: data.refreshToken,
+                accessToken: data?.data?.accessToken ?? data?.accessToken,
+                refreshToken: data?.data?.refreshToken ?? data?.refreshToken,
             },
         };
     } catch (error) {

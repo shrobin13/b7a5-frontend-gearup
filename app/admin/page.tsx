@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { MetricCard } from "@/components/shared/metric-card";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdminGear, getAdminRentals, getAdminUsers } from "@/services/admin";
 import { useAuthStore } from "@/store/auth-store";
@@ -17,61 +18,56 @@ const sidebarItems = [
   { href: "/admin/rentals", label: "Rentals" },
 ];
 
-const fallbackUsers: AppUser[] = [
-  { name: "Ahsan", email: "ahsan@example.com", role: "CUSTOMER", isActive: true },
-  { name: "Nadia", email: "nadia@example.com", role: "PROVIDER", isActive: true },
-];
-
-const fallbackGear: Gear[] = [{ name: "Trail Pro Tent", stock: 4, pricePerDay: 28 }];
-const fallbackRentals: Rental[] = [{ status: "active", totalAmount: 140, gear: { name: "Trail Pro Tent" } }];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const { isAuthenticated, token, user } = useAuthStore();
-  const [users, setUsers] = useState<AppUser[]>(fallbackUsers);
-  const [gear, setGear] = useState<Gear[]>(fallbackGear);
-  const [rentals, setRentals] = useState<Rental[]>(fallbackRentals);
+  const { isAuthenticated, user, hasHydrated } = useAuthStore();
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [gear, setGear] = useState<Gear[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       router.replace("/login");
       return;
     }
 
-    const authToken = token;
-
     async function loadData() {
       setLoading(true);
       try {
-        const [nextUsers, nextGear, nextRentals] = await Promise.all([getAdminUsers(authToken), getAdminGear(authToken), getAdminRentals(authToken)]);
-        setUsers(nextUsers ?? fallbackUsers);
-        setGear(nextGear ?? fallbackGear);
-        setRentals(nextRentals ?? fallbackRentals);
+        const [nextUsers, nextGear, nextRentals] = await Promise.all([getAdminUsers(), getAdminGear(), getAdminRentals()]);
+        setUsers(nextUsers ?? []);
+        setGear(nextGear ?? []);
+        setRentals(nextRentals ?? []);
       } catch {
-        setUsers(fallbackUsers);
-        setGear(fallbackGear);
-        setRentals(fallbackRentals);
+        setUsers([]);
+        setGear([]);
+        setRentals([]);
       } finally {
         setLoading(false);
       }
     }
 
     void loadData();
-  }, [isAuthenticated, router, token]);
+  }, [hasHydrated, isAuthenticated, router]);
 
   const displayName = user?.name ?? user?.email?.split("@")[0] ?? "Admin";
   const revenue = useMemo(() => rentals.reduce((sum, rental) => sum + Number(rental.totalAmount ?? 0), 0), [rentals]);
   const activityRows = useMemo(
     () => [
       ...users.slice(0, 2).map((entry) => ({ name: entry.name ?? entry.email, type: entry.role ?? "USER", status: entry.isActive ? "active" : "inactive" })),
-      ...gear.slice(0, 1).map((entry) => ({ name: entry.name, type: "Gear", status: entry.stock && entry.stock > 0 ? "active" : "pending" })),
+      ...gear.slice(0, 1).map((entry) => ({ name: entry.name, type: "Gear", status: (entry.isAvailable ?? Number(entry.stockQuantity ?? entry.stock ?? 0) > 0) ? "active" : "pending" })),
       ...rentals.slice(0, 1).map((entry) => ({ name: `Rental ${entry._id ?? "#1"}`, type: "Rental", status: entry.status ?? "pending" })),
     ],
     [gear, rentals, users],
   );
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return null;
   }
 
@@ -97,15 +93,19 @@ export default function AdminDashboardPage() {
             <CardTitle className="font-display text-2xl text-ink">Platform activity</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {activityRows.map((row) => (
-              <div key={`${row.type}-${row.name}`} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-muted p-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="font-medium text-foreground">{row.name}</p>
-                  <p className="text-sm text-ink-muted">{row.type}</p>
+            {activityRows.length ? (
+              activityRows.map((row) => (
+                <div key={`${row.type}-${row.name}`} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-muted p-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">{row.name}</p>
+                    <p className="text-sm text-ink-muted">{row.type}</p>
+                  </div>
+                  <StatusBadge status={row.status} />
                 </div>
-                <StatusBadge status={row.status} />
-              </div>
-            ))}
+              ))
+            ) : (
+              <EmptyState title="No data available" description="There is no platform activity to display yet." />
+            )}
           </CardContent>
         </Card>
       </div>

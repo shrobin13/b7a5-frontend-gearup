@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
+import { EmptyState } from "@/components/shared/empty-state";
 import { getAdminRentals } from "@/services/admin";
 import { useAuthStore } from "@/store/auth-store";
 import type { Rental } from "@/types";
@@ -15,37 +16,39 @@ const sidebarItems = [
   { href: "/admin/rentals", label: "Rentals" },
 ];
 
-const fallbackRentals: Rental[] = [
-  { _id: "fallback-rental-1", status: "active", totalAmount: 84, gear: { name: "Trail Pro Tent" } },
-  { _id: "fallback-rental-2", status: "completed", totalAmount: 42, gear: { name: "Summit Pack" } },
-];
 
 export default function AdminRentalsPage() {
   const router = useRouter();
-  const { isAuthenticated, token } = useAuthStore();
-  const [rentals, setRentals] = useState<Rental[]>(fallbackRentals);
+  const { isAuthenticated, hasHydrated } = useAuthStore();
+  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       router.replace("/login");
       return;
     }
 
-    const authToken = token;
-
     async function loadData() {
+      setLoading(true);
       try {
-        const nextRentals = await getAdminRentals(authToken);
-        setRentals(nextRentals ?? fallbackRentals);
+        const nextRentals = await getAdminRentals();
+        setRentals(Array.isArray(nextRentals) ? nextRentals : []);
       } catch {
-        setRentals(fallbackRentals);
+        setRentals([]);
+      } finally {
+        setLoading(false);
       }
     }
 
     void loadData();
-  }, [isAuthenticated, router, token]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return null;
   }
 
@@ -56,20 +59,25 @@ export default function AdminRentalsPage() {
         <h1 className="mt-2 font-display text-4xl text-ink">Booking activity</h1>
       </div>
 
-      <DataTable
-        columns={[
-          { key: "id", label: "ID" },
-          { key: "gear", label: "Item" },
-          { key: "total", label: "Total" },
-          { key: "status", label: "Status" },
-        ]}
-        data={rentals.map((rental) => ({
-          ...rental,
-          id: rental._id ?? "unknown",
-          gear: rental.gear?.name ?? "Rental item",
-          total: rental.totalAmount ? `$${rental.totalAmount}` : "—",
-        }))}
-      />
+      {loading && rentals.length === 0 ? <p className="mb-4 text-sm text-ink-muted">Loading rentals…</p> : null}
+      {!loading && !rentals.length ? (
+        <EmptyState title="No rentals found" description="There are no rental records to show right now." />
+      ) : (
+        <DataTable
+          columns={[
+            { key: "id", label: "ID" },
+            { key: "gear", label: "Item" },
+            { key: "total", label: "Total" },
+            { key: "status", label: "Status" },
+          ]}
+          data={rentals.map((rental) => ({
+            ...rental,
+            id: rental._id ?? "unknown",
+            gear: rental.gear?.name ?? "Rental item",
+            total: rental.totalAmount ? `$${rental.totalAmount}` : "—",
+          }))}
+        />
+      )}
     </DashboardShell>
   );
 }

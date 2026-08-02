@@ -4,15 +4,9 @@ import Link from "next/link";
 import { ArrowRight, Compass, Flame, MapPin, ShieldCheck, TentTree } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getAllGear } from "@/services/gear";
+import { EmptyState } from "@/components/shared/empty-state";
 import { GearCard } from "@/components/shared/gear-card";
 import { Button } from "@/components/ui/button";
-
-const fallbackGear = [
-  { id: "trail-pro-tent", name: "Trail Pro Tent", category: "Tent", price: 28, rating: 4.9, available: true },
-  { id: "summit-pack", name: "Summit Pack", category: "Backpack", price: 18, rating: 4.8, available: true },
-  { id: "camp-lantern", name: "Camp Lantern", category: "Camp", price: 12, rating: 4.7, available: false },
-  { id: "alpine-stove", name: "Alpine Stove", category: "Cookware", price: 21, rating: 4.9, available: true },
-];
 
 const categories = [
   { label: "Tents", icon: TentTree },
@@ -28,8 +22,107 @@ const steps = [
   "Pick up and head out",
 ];
 
+type FeaturedGearItem = {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  rating: number;
+  available: boolean;
+};
+
+function normalizeText(value: unknown, fallback = "Gear item") {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const nested = record.name ?? record.title ?? record.label ?? record.value ?? record.slug;
+
+    if (typeof nested === "string" && nested.trim()) {
+      return nested.trim();
+    }
+
+    if (typeof nested === "number" || typeof nested === "boolean") {
+      return String(nested);
+    }
+  }
+
+  return fallback;
+}
+
+function normalizeNumber(value: unknown, fallback = 0) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const nested = record.value ?? record.amount ?? record.price ?? record.count;
+    if (typeof nested === "number" && Number.isFinite(nested)) {
+      return nested;
+    }
+
+    if (typeof nested === "string" && nested.trim()) {
+      const parsed = Number(nested);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  return fallback;
+}
+
+function normalizeBoolean(value: unknown, fallback = false) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return value > 0;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes", "available", "in-stock", "instock"].includes(normalized)) {
+      return true;
+    }
+
+    if (["false", "0", "no", "unavailable", "out-of-stock", "outofstock"].includes(normalized)) {
+      return false;
+    }
+  }
+
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const nested = record.value ?? record.available ?? record.isAvailable;
+    if (typeof nested === "boolean") {
+      return nested;
+    }
+
+    if (typeof nested === "number") {
+      return nested > 0;
+    }
+  }
+
+  return fallback;
+}
+
 export default function HomePage() {
-  const [featuredGear, setFeaturedGear] = useState(fallbackGear);
+  const [featuredGear, setFeaturedGear] = useState<FeaturedGearItem[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -38,24 +131,32 @@ export default function HomePage() {
       try {
         const gear = await getAllGear();
 
-        if (!isMounted || !Array.isArray(gear) || !gear.length) {
+        if (!isMounted || !Array.isArray(gear)) {
           return;
         }
 
-        const mapped = gear
-          .map((item) => ({
-            id: item.id ?? item._id ?? item.name,
-            name: item.name,
-            category: item.category ?? "Camp",
-            price: Number(item.pricePerDay ?? 0),
-            rating: Number(item.rating ?? 4.5),
-            available: (item.stock ?? 0) > 0,
-          }))
+        const mapped: FeaturedGearItem[] = gear
+          .map((item) => {
+            const rawItem = item as Record<string, unknown>;
+            const stock = normalizeNumber(rawItem.stockQuantity ?? rawItem.stock ?? rawItem.quantity ?? rawItem.availableStock, 0);
+            const available = normalizeBoolean(rawItem.available ?? rawItem.isAvailable, stock > 0);
+
+            return {
+              id: normalizeText(rawItem.id ?? rawItem._id ?? rawItem.name ?? rawItem.slug, "gear-item"),
+              name: normalizeText(rawItem.name, "Untitled gear"),
+              category: normalizeText(rawItem.category, "Camp"),
+              price: normalizeNumber(rawItem.pricePerDay ?? rawItem.price ?? rawItem.dayRate, 0),
+              rating: normalizeNumber(rawItem.rating, 4.5),
+              available,
+            };
+          })
           .slice(0, 4);
 
         setFeaturedGear(mapped);
       } catch {
-        // Keep the static fallback if the API is unavailable.
+        if (isMounted) {
+          setFeaturedGear([]);
+        }
       }
     };
 
@@ -114,11 +215,15 @@ export default function HomePage() {
                 <span className="rounded-full bg-pine-soft px-2.5 py-1 text-xs font-medium text-pine">Live stock</span>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                {featuredGear.slice(0, 4).map((item) => (
-                  <GearCard key={item.id ?? item.name} item={item} compact />
-                ))}
-              </div>
+              {featuredGear.length ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {featuredGear.slice(0, 4).map((item) => (
+                    <GearCard key={item.id ?? item.name} item={item} compact />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState title="No gear available" description="There are no featured listings available right now. Check back soon for new arrivals." />
+              )}
             </div>
           </div>
         </div>
@@ -156,11 +261,15 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {featuredGear.map((item) => (
-            <GearCard key={item.id ?? item.name} item={item} />
-          ))}
-        </div>
+        {featuredGear.length ? (
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            {featuredGear.map((item) => (
+              <GearCard key={item.id ?? item.name} item={item} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="No data available" description="There are no gear listings available at the moment." />
+        )}
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6">

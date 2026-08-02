@@ -1,55 +1,42 @@
 import { create } from "zustand";
 import type { AppUser } from "@/types";
 
-const STORAGE_KEY = "gearup-auth-state";
-
 type AuthState = {
-  token: string | null;
   user: AppUser | null;
   isAuthenticated: boolean;
-  setAuth: (token: string, user?: AppUser | null) => void;
+  hasHydrated: boolean;
+  setAuth: (user?: AppUser | null) => void;
   clearAuth: () => void;
-  hydrate: () => void;
+  hydrate: () => Promise<void>;
 };
 
-const readInitialState = () => {
-  if (typeof window === "undefined") {
-    return { token: null, user: null, isAuthenticated: false };
-  }
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return { token: null, user: null, isAuthenticated: false };
-    }
-
-    const saved = JSON.parse(raw) as { token?: string | null; user?: AppUser | null };
-    return {
-      token: saved.token ?? null,
-      user: saved.user ?? null,
-      isAuthenticated: Boolean(saved.token),
-    };
-  } catch {
-    return { token: null, user: null, isAuthenticated: false };
-  }
-};
+const createEmptyState = () => ({
+  user: null,
+  isAuthenticated: false,
+  hasHydrated: false,
+});
 
 export const useAuthStore = create<AuthState>((set) => ({
-  ...readInitialState(),
-  setAuth: (token, user = null) => {
-    const nextState = { token, user, isAuthenticated: Boolean(token) };
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
-    }
-    set(nextState);
+  ...createEmptyState(),
+  setAuth: (user = null) => {
+    set({ user, isAuthenticated: Boolean(user), hasHydrated: true });
   },
   clearAuth: () => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-    set({ token: null, user: null, isAuthenticated: false });
+    set({ user: null, isAuthenticated: false, hasHydrated: true });
   },
-  hydrate: () => {
-    set(readInitialState());
+  hydrate: async () => {
+    try {
+      const response = await fetch("/api/auth/me", { cache: "no-store" });
+      if (!response.ok) {
+        set({ user: null, isAuthenticated: false, hasHydrated: true });
+        return;
+      }
+
+      const payload = await response.json();
+      const user = payload?.user ?? payload ?? null;
+      set({ user, isAuthenticated: Boolean(user), hasHydrated: true });
+    } catch {
+      set({ user: null, isAuthenticated: false, hasHydrated: true });
+    }
   },
 }));

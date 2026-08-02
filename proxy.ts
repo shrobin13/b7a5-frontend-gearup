@@ -5,8 +5,10 @@ const PROTECTED_PREFIXES = ["/dashboard", "/provider", "/admin"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get("gearup-token")?.value;
+  const token = request.cookies.get("gearup-access-token")?.value;
   const role = request.cookies.get("gearup-role")?.value ?? null;
+  // console.log(token,'token/* ');
+  // console.log(role,'role'); */
 
   if (PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix)) && !token) {
     return NextResponse.redirect(new URL("/login", request.url));

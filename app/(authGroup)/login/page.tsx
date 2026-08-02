@@ -1,47 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { login } from "@/services/auth";
+import type { AppUser } from "@/types";
 import { useAuthStore } from "@/store/auth-store";
 import { toast } from "sonner";
 
 export default function LoginPage() {
-  const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+/*   function buildFallbackUser(): AppUser {
+    return {
+      email: form.email,
+      name: form.email.split("@")[0],
+      role: "CUSTOMER",
+    };
+   */}
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
 
     try {
       const response = await login(form);
-      const token = response.token ?? response.accessToken ?? null;
-      const user = response.user ?? {
-        email: form.email,
-        name: form.email.split("@")[0],
-        role: "CUSTOMER" as const,
-      };
+      const user = response.user ;
+      const role = user.role;
+      const authUser = { ...user, role } satisfies AppUser;
+      setAuth(authUser);
 
-      if (!token) {
-        throw new Error("Login response did not include an auth token");
-      }
-
-      setAuth(token, user);
       toast.success("Login successful");
 
-      const redirectPath = user.role === "PROVIDER" ? "/provider" : user.role === "ADMIN" ? "/admin" : "/dashboard";
-      router.push(redirectPath);
+      const redirectPath = role === "PROVIDER" ? "/provider" : role === "ADMIN" ? "/admin" : "/dashboard";
+      window.location.assign(redirectPath);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Login failed");
+      const message = error instanceof Error ? error.message : "Login failed";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

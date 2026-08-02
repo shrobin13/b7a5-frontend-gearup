@@ -16,31 +16,38 @@ export type AuthRegisterPayload = {
 };
 
 export type AuthResponse = {
-  token?: string;
+  success?: boolean;
+  statusCode?: number;
+  message?: string;
+  data?: {
+    accessToken?: string;
+    refreshToken?: string;
+    user?: AppUser;
+  };
   accessToken?: string;
   refreshToken?: string;
+  token?: string;
   user?: AppUser;
-  message?: string;
 };
 
-export async function login(payload: AuthLoginPayload, token?: string | null) {
+export async function login(payload: AuthLoginPayload) {
   return apiRequest<AuthResponse>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
-  }, token);
+  });
 }
 
-export async function register(payload: AuthRegisterPayload, token?: string | null) {
+export async function register(payload: AuthRegisterPayload) {
   return apiRequest<AuthResponse>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(payload),
-  }, token);
+  });
 }
 
-export async function getCurrentUser(token: string) {
-  return apiRequest<AppUser>("/api/auth/me", { method: "GET" }, token);
+export async function getCurrentUser() {
+  return apiRequest<AppUser>("/api/auth/me", { method: "GET" });
 }
 
-export async function logout(token?: string | null) {
-  return apiRequest<{ message?: string }>("/api/auth/logout", { method: "POST" }, token);
+export async function logout() {
+  return apiRequest<{ message?: string }> ("/api/auth/logout", { method: "POST" });
 }

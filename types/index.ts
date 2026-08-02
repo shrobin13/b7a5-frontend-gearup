@@ -16,13 +16,19 @@ export type Gear = {
   id?: string;
   name: string;
   description?: string;
-  category?: string;
-  pricePerDay?: number;
+  brand?: string | null;
+  category?: string | { id?: string; name?: string; description?: string } | null;
+  categoryId?: string | null;
+  pricePerDay?: number | string;
+  stockQuantity?: number;
   stock?: number;
+  isAvailable?: boolean;
   condition?: string;
   image?: string;
+  images?: string[];
   rating?: number;
-  provider?: string;
+  provider?: string | { id?: string; name?: string };
+  providerId?: string;
 };
 
 export type Rental = {
@@ -42,6 +48,18 @@ export type Payment = {
   amount?: number;
   currency?: string;
   provider?: string;
+};
+
+export type Review = {
+  _id?: string;
+  id?: string;
+  gearId?: string;
+  rating?: number;
+  comment?: string;
+  user?: {
+    name?: string;
+    email?: string;
+  };
 };
 
 export type ApiError = {
