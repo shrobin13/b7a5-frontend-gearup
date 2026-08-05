@@ -1,30 +1,101 @@
-import { apiRequest, unwrapApiEnvelope, type ApiEnvelope } from "@/lib/api";
 import type { Payment, Rental } from "@/types";
 
+type ApiEnvelope<T> = {
+  statusCode?: number;
+  success?: boolean;
+  message?: string;
+  data: T;
+};
+
+function unwrapApiEnvelope<T>(payload: ApiEnvelope<T> | T): T {
+  if (payload && typeof payload === "object" && "data" in payload) {
+    const candidate = payload as ApiEnvelope<T>;
+    if (candidate && Object.prototype.hasOwnProperty.call(candidate, "data")) {
+      return candidate.data;
+    }
+  }
+
+  return payload as T;
+}
+
 export async function getMyRentals() {
-  const response = await apiRequest<ApiEnvelope<Rental[]> | Rental[]>("/api/rentals", { method: "GET" });
-  return unwrapApiEnvelope(response);
+  const response = await fetch("/api/rentals", {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Failed to fetch rentals");
+  }
+
+  return unwrapApiEnvelope<Rental[]>(data);
 }
 
 export async function getRentalById(id: string) {
-  const response = await apiRequest<ApiEnvelope<Rental> | Rental>(`/api/rentals/${id}`, { method: "GET" });
-  return unwrapApiEnvelope(response);
+  const response = await fetch(`/api/rentals/${id}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Failed to fetch rental");
+  }
+
+  return unwrapApiEnvelope<Rental>(data);
 }
 
 export async function createRental(payload: Record<string, unknown>) {
-  const response = await apiRequest<ApiEnvelope<Rental> | Rental>("/api/rentals", {
+  const response = await fetch("/api/rentals", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    cache: "no-store",
   });
-  return unwrapApiEnvelope(response);
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Failed to create rental");
+  }
+
+  return unwrapApiEnvelope<Rental>(data);
 }
 
 export async function cancelRental(id: string) {
-  const response = await apiRequest<ApiEnvelope<Rental> | Rental>(`/api/rentals/${id}/cancel`, { method: "PATCH" });
-  return unwrapApiEnvelope(response);
+  const response = await fetch(`/api/rentals/${id}/cancel`, {
+    method: "PATCH",
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Failed to cancel rental");
+  }
+
+  return unwrapApiEnvelope<Rental>(data);
 }
 
 export async function getMyPayments() {
-  const response = await apiRequest<ApiEnvelope<Payment[]> | Payment[]>("/api/payments", { method: "GET" });
-  return unwrapApiEnvelope(response);
+  const response = await fetch("/api/payments", {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Failed to fetch payments");
+  }
+
+  return unwrapApiEnvelope<Payment[]>(data);
 }

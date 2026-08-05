@@ -2,10 +2,24 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Ban } from "lucide-react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
-import { getAdminRentals } from "@/services/admin";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { cancelAdminRental, getAdminRentals } from "@/services/admin";
 import { useAuthStore } from "@/store/auth-store";
 import type { Rental } from "@/types";
 
@@ -22,6 +36,7 @@ export default function AdminRentalsPage() {
   const { isAuthenticated, hasHydrated } = useAuthStore();
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -48,6 +63,23 @@ export default function AdminRentalsPage() {
     void loadData();
   }, [hasHydrated, isAuthenticated, router]);
 
+  async function handleCancel(id: string) {
+    setPendingId(id);
+    try {
+      await cancelAdminRental(id);
+      setRentals((prev) =>
+        prev.map((rental) =>
+          (rental.id ?? rental._id) === id ? { ...rental, status: "CANCELLED" } : rental
+        )
+      );
+      toast.success("Rental cancelled.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to cancel rental.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   if (!hasHydrated || !isAuthenticated) {
     return null;
   }
@@ -69,13 +101,51 @@ export default function AdminRentalsPage() {
             { key: "gear", label: "Item" },
             { key: "total", label: "Total" },
             { key: "status", label: "Status" },
+            { key: "actions", label: "Actions" },
           ]}
-          data={rentals.map((rental: any) => ({
-            ...rental,
-            id: rental.id ?? rental._id ?? "unknown",
-            gear: rental.items?.[0]?.gearItem?.name ?? rental.gear?.name ?? "Rental item",
-            total: rental.totalAmount ? `$${rental.totalAmount}` : "—",
-          }))}
+          data={rentals.map((rental: any) => {
+            const rentalId = rental.id ?? rental._id ?? "";
+            const isCancelled = rental.status === "CANCELLED" || rental.status === "CANCELED";
+            return {
+              ...rental,
+              id: rentalId || "unknown",
+              gear: rental.items?.[0]?.gearItem?.name ?? rental.gear?.name ?? "Rental item",
+              total: rental.totalAmount ? `$${rental.totalAmount}` : "—",
+              actions: isCancelled ? (
+                <span className="text-xs text-ink-muted">Cancelled</span>
+              ) : (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/20"
+                      disabled={pendingId === rentalId}
+                    >
+                      <Ban className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Cancel rental?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will cancel rental {rentalId || "this booking"}. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleCancel(rentalId)}
+                        className="bg-red-600 text-white hover:bg-red-700"
+                      >
+                        {pendingId === rentalId ? "Cancelling…" : "Cancel rental"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ),
+            };
+          })}
         />
       )}
     </DashboardShell>

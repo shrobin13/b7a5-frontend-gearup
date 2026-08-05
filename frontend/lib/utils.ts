@@ -11,7 +11,7 @@ export function cn(...inputs: ClassValue[]) {
  * normalizes either shape into a safe display string so it's never rendered
  * as a raw object (which crashes React).
  */
-export function getCategoryName(category: unknown, fallback = "Camp"): string {
+export function getCategoryName(category: unknown, fallback = "Uncategorized"): string {
   if (typeof category === "string" && category.trim()) {
     return category.trim();
   }

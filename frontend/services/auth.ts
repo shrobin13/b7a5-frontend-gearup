@@ -1,4 +1,3 @@
-import { apiRequest } from "@/lib/api";
 import type { AppUser } from "@/types";
 
 export type AuthLoginPayload = {
@@ -31,23 +30,71 @@ export type AuthResponse = {
 };
 
 export async function login(payload: AuthLoginPayload) {
-  return apiRequest<AuthResponse>("/api/auth/login", {
+  const response = await fetch("/api/auth/login", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    cache: "no-store",
   });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Login failed");
+  }
+
+  return data as AuthResponse;
 }
 
 export async function register(payload: AuthRegisterPayload) {
-  return apiRequest<AuthResponse>("/api/auth/register", {
+  const response = await fetch("/api/auth/register", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    cache: "no-store",
   });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Registration failed");
+  }
+
+  return data as AuthResponse;
 }
 
 export async function getCurrentUser() {
-  return apiRequest<AppUser>("/api/auth/me", { method: "GET" });
+  const response = await fetch("/api/auth/me", {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Failed to fetch current user");
+  }
+
+  const payload = data as AuthResponse;
+  const user = payload?.user ?? payload?.data?.user ?? (data as AppUser);
+  return user as AppUser;
 }
 
 export async function logout() {
-  return apiRequest<{ message?: string }> ("/api/auth/logout", { method: "POST" });
+  const response = await fetch("/api/auth/logout", {
+    method: "POST",
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Logout failed");
+  }
+
+  return data as { message?: string };
 }

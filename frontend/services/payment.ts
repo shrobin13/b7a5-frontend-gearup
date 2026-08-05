@@ -1,26 +1,83 @@
-import { apiRequest, unwrapApiEnvelope, type ApiEnvelope } from "@/lib/api";
 import type { Payment } from "@/types";
 
-export async function createPayment(payload: Record<string, unknown>) {
-  const response = await apiRequest<ApiEnvelope<{ clientSecret?: string; paymentId?: string; _id?: string; status?: string; url?: string; checkoutUrl?: string; paymentUrl?: string; redirectUrl?: string; sessionUrl?: string }> | { clientSecret?: string; paymentId?: string; _id?: string; status?: string; url?: string; checkoutUrl?: string; paymentUrl?: string; redirectUrl?: string; sessionUrl?: string }>(
-    "/api/payments/create",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
+type ApiEnvelope<T> = {
+  statusCode?: number;
+  success?: boolean;
+  message?: string;
+  data: T;
+};
+
+function unwrapApiEnvelope<T>(payload: ApiEnvelope<T> | T): T {
+  if (payload && typeof payload === "object" && "data" in payload) {
+    const candidate = payload as ApiEnvelope<T>;
+    if (candidate && Object.prototype.hasOwnProperty.call(candidate, "data")) {
+      return candidate.data;
     }
-  );
-  return unwrapApiEnvelope(response);
+  }
+
+  return payload as T;
+}
+
+type CreatePaymentResult = {
+  clientSecret?: string;
+  paymentId?: string;
+  _id?: string;
+  status?: string;
+  url?: string;
+  checkoutUrl?: string;
+  paymentUrl?: string;
+  redirectUrl?: string;
+  sessionUrl?: string;
+};
+
+export async function createPayment(payload: Record<string, unknown>) {
+  const response = await fetch("/api/payments/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Failed to create payment");
+  }
+
+  return unwrapApiEnvelope<CreatePaymentResult>(data);
 }
 
 export async function getPaymentById(id: string) {
-  const response = await apiRequest<ApiEnvelope<Payment> | Payment>(`/api/payments/${id}`, { method: "GET" });
-  return unwrapApiEnvelope(response);
+  const response = await fetch(`/api/payments/${id}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Failed to fetch payment");
+  }
+
+  return unwrapApiEnvelope<Payment>(data);
 }
 
 export async function confirmPayment(payload: Record<string, unknown>) {
-  const response = await apiRequest<ApiEnvelope<Payment> | Payment>("/api/payments/confirm", {
+  const response = await fetch("/api/payments/confirm", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    cache: "no-store",
   });
-  return unwrapApiEnvelope(response);
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? "Failed to confirm payment");
+  }
+
+  return unwrapApiEnvelope<Payment>(data);
 }

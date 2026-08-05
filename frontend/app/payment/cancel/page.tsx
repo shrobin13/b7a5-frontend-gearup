@@ -1,16 +1,37 @@
+"use client";
+
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ArrowLeft, CircleX, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { cancelRental } from "@/services/customer";
 
-interface PaymentCancelPageProps {
-  searchParams: Promise<{ payment_id?: string }>;
-}
+export default function PaymentCancelPage() {
+  const searchParams = useSearchParams();
+  const paymentId = searchParams.get("paymentId") ?? searchParams.get("payment_id") ?? "";
+  const rentalId = searchParams.get("rentalId") ?? "";
 
-export default async function PaymentCancelPage({
-  searchParams,
-}: PaymentCancelPageProps) {
-  const { payment_id } = await searchParams;
+  const [cancelled, setCancelled] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function cancelBooking() {
+      if (!rentalId) {
+        return;
+      }
+
+      try {
+        await cancelRental(rentalId);
+        setCancelled(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not cancel the rental");
+      }
+    }
+
+    void cancelBooking();
+  }, [rentalId]);
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
@@ -33,8 +54,16 @@ export default async function PaymentCancelPage({
             to try again or adjust the dates.
           </p>
 
+          {error ? (
+            <p className="mt-6 text-sm text-destructive">{error}</p>
+          ) : cancelled ? (
+            <p className="mt-6 text-sm text-ink-muted">
+              Your pending booking has been cancelled.
+            </p>
+          ) : null}
+
           {/* Payment ID detail card */}
-          {payment_id && (
+          {paymentId && (
             <div className="mx-auto mt-8 max-w-md rounded-2xl border border-border bg-surface-muted p-4 text-left text-sm text-ink-muted">
               <div className="flex items-center gap-2 mb-3">
                 <ReceiptText className="h-4 w-4 shrink-0" />
@@ -43,7 +72,7 @@ export default async function PaymentCancelPage({
               <div className="flex items-center justify-between gap-3">
                 <span>Payment ID</span>
                 <span className="font-mono text-xs text-foreground break-all text-right max-w-[60%]">
-                  {payment_id}
+                  {paymentId}
                 </span>
               </div>
               <div className="mt-3 flex items-center justify-between gap-3">

@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/store/auth-store";
+import type { AppUser } from "@/types";
 
 const sidebarItems = [
   { href: "/dashboard", label: "Overview" },
@@ -16,7 +17,8 @@ const sidebarItems = [
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { isAuthenticated, user, hasHydrated } = useAuthStore();
+  const { isAuthenticated, user, hasHydrated, setAuth } = useAuthStore();
+  const [latestUser, setLatestUser] = useState<AppUser | null>(null);
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -25,19 +27,52 @@ export default function ProfilePage() {
 
     if (!isAuthenticated) {
       router.replace("/login");
+      return;
     }
-  }, [hasHydrated, isAuthenticated, router]);
+
+    let cancelled = false;
+
+    async function refreshProfile() {
+      try {
+        const response = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = await response.json();
+        const nextUser = (payload?.user ?? payload ?? null) as AppUser | null;
+
+        if (cancelled) {
+          return;
+        }
+
+        setLatestUser(nextUser);
+        if (nextUser) {
+          setAuth(nextUser);
+        }
+      } catch {
+        // Keep the cached user if the refresh fails.
+      }
+    }
+
+    void refreshProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasHydrated, isAuthenticated, router, setAuth]);
 
   if (!hasHydrated || !isAuthenticated) {
     return null;
   }
 
-  const displayName = user?.name ?? user?.email?.split("@")[0] ?? "Member";
+  const profileUser = latestUser ?? user;
+  const displayName = profileUser?.name ?? profileUser?.email?.split("@")[0] ?? "Member";
   const profileFields = [
     { label: "Name", value: displayName },
-    { label: "Email", value: user?.email ?? "—" },
-    { label: "Role", value: user?.role ?? "CUSTOMER" },
-    { label: "Status", value: user?.isActive === false ? "SUSPENDED" : "ACTIVE" },
+    { label: "Email", value: profileUser?.email ?? "—" },
+    { label: "Role", value: profileUser?.role ?? "CUSTOMER" },
+    { label: "Status", value: profileUser?.isActive === false ? "SUSPENDED" : "ACTIVE" },
   ];
 
   return (
@@ -47,7 +82,7 @@ export default function ProfilePage() {
         <h1 className="mt-2 font-display text-4xl text-ink">Your account</h1>
       </div>
 
-      {user ? (
+      {profileUser ? (
         <Card className="border border-border bg-surface">
           <CardContent className="space-y-3 p-6 text-sm text-ink-muted">
             {profileFields.map((field) => (

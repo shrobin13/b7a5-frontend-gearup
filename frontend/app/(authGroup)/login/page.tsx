@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { login } from "@/services/auth";
 import { useAuthStore } from "@/store/auth-store";
 import type { AppUser } from "@/types";
 
@@ -38,21 +39,14 @@ export default function LoginPage() {
     const password = formData.get("password")?.toString();
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-        cache: "no-store",
-      });
+      const payload = await login({ email: email ?? "", password: password ?? "" });
 
-      const payload = await response.json();
-
-      if (!response.ok || !payload.success) {
+      if (!payload.success) {
         toast.error(payload.message || "Login failed.");
         return;
       }
 
-      const user = (payload.user ?? null) as AppUser | null;
+      const user = (payload.user ?? payload.data?.user ?? null) as AppUser | null;
 
       // Update the store immediately. Don't rely on Providers' one-time
       // hydrate() to notice we're logged in — it only runs once on app mount

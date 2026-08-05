@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getCurrentUser } from "@/services/auth";
 import type { AppUser } from "@/types";
 
 type AuthState = {
@@ -26,14 +27,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   hydrate: async () => {
     try {
-      const response = await fetch("/api/auth/me", { cache: "no-store" });
-      if (!response.ok) {
-        set({ user: null, isAuthenticated: false, hasHydrated: true });
-        return;
-      }
-
-      const payload = await response.json();
-      const user = payload?.user ?? payload ?? null;
+      const user = await getCurrentUser();
       set({ user, isAuthenticated: Boolean(user), hasHydrated: true });
     } catch {
       set({ user: null, isAuthenticated: false, hasHydrated: true });

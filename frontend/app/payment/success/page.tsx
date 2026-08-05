@@ -1,9 +1,50 @@
+"use client";
+
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { confirmPayment, getPaymentById } from "@/services/payment";
+import type { Payment } from "@/types";
 
 export default function PaymentSuccessPage() {
+  const searchParams = useSearchParams();
+  const paymentId = searchParams.get("paymentId") ?? searchParams.get("payment_id") ?? "";
+  const rentalId = searchParams.get("rentalId") ?? "";
+
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadPayment() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        if (paymentId) {
+          const nextPayment = await getPaymentById(paymentId);
+          setPayment(nextPayment);
+        }
+
+        if (paymentId || rentalId) {
+          await confirmPayment({ paymentId, rentalOrderId: rentalId });
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not load payment details");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadPayment();
+  }, [paymentId, rentalId]);
+
+  const gearName = (payment as { gear?: { name?: string } } | null)?.gear?.name ?? "Your rental";
+  const amount = payment?.amount ? `$${payment.amount}` : null;
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
       <Card className="border border-border bg-surface shadow-[0_18px_42px_rgba(26,36,32,0.05)]">
@@ -19,16 +60,24 @@ export default function PaymentSuccessPage() {
             Your booking is confirmed and the provider has been notified. A receipt has been sent to your email.
           </p>
 
-          <div className="mx-auto mt-8 max-w-md rounded-2xl border border-border bg-surface-muted p-4 text-left text-sm text-ink-muted">
-            <div className="flex items-center justify-between gap-3">
-              <span>Trail Pro Tent</span>
-              <span className="font-mono text-foreground">$180</span>
+          {loading ? (
+            <p className="mt-8 text-sm text-ink-muted">Loading payment details…</p>
+          ) : error ? (
+            <p className="mt-8 text-sm text-destructive">{error}</p>
+          ) : (
+            <div className="mx-auto mt-8 max-w-md rounded-2xl border border-border bg-surface-muted p-4 text-left text-sm text-ink-muted">
+              <div className="flex items-center justify-between gap-3">
+                <span>{gearName}</span>
+                <span className="font-mono text-foreground">{amount ?? "—"}</span>
+              </div>
+              {payment?.status ? (
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span>Status</span>
+                  <span className="font-mono text-foreground">{payment.status}</span>
+                </div>
+              ) : null}
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <span>Trip dates</span>
-              <span className="font-mono text-foreground">Aug 12 – Aug 18</span>
-            </div>
-          </div>
+          )}
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm text-ink-muted">
             <ShieldCheck className="h-4 w-4 text-pine" />

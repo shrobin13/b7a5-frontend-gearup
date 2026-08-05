@@ -1,0 +1,206 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { DataTable } from "@/components/shared/data-table";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { deleteGear, updateGear } from "@/services/gear";
+import { getProviderGear } from "@/services/provider";
+import { useAuthStore } from "@/store/auth-store";
+import type { Gear } from "@/types";
+
+const sidebarItems = [
+  { href: "/provider", label: "Overview" },
+  { href: "/provider/inventory", label: "Inventory" },
+  { href: "/provider/orders", label: "Orders" },
+  { href: "/provider/add-gear", label: "Add gear" },
+];
+
+
+export default function ProviderInventoryPage() {
+  const router = useRouter();
+  const { isAuthenticated, hasHydrated } = useAuthStore();
+  const [inventory, setInventory] = useState<Gear[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingGear, setEditingGear] = useState<Gear | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", pricePerDay: "", stock: "" });
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      router.replace("/login");
+      return;
+    }
+
+    async function loadData() {
+      setLoading(true);
+      try {
+        const nextGear = await getProviderGear();
+        setInventory(Array.isArray(nextGear) ? nextGear : []);
+      } catch {
+        setInventory([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadData();
+  }, [hasHydrated, isAuthenticated, router]);
+
+  const openEditor = (gear: Gear) => {
+    setEditingGear(gear);
+    setEditForm({
+      name: gear.name ?? "",
+      pricePerDay: String(gear.pricePerDay ?? ""),
+      stock: String(gear.stockQuantity ?? gear.stock ?? ""),
+    });
+  };
+
+  const handleSave = async () => {
+    if (!editingGear?.id && !editingGear?._id) return;
+    setSaving(true);
+    try {
+      await updateGear(editingGear.id ?? editingGear._id ?? "", {
+        name: editForm.name.trim(),
+        pricePerDay: Number(editForm.pricePerDay),
+        stockQuantity: Number(editForm.stock),
+      });
+      toast.success("Gear updated");
+      const nextGear = await getProviderGear();
+      setInventory(Array.isArray(nextGear) ? nextGear : []);
+      setEditingGear(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update gear");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await deleteGear(id);
+      toast.success("Gear deleted");
+      setInventory((prev) => prev.filter((item) => (item.id ?? item._id) !== id));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete gear");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  if (!hasHydrated || !isAuthenticated) {
+    return null;
+  }
+
+  return (
+    <DashboardShell title="Provider" accent="pine" items={sidebarItems}>
+      <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-[0.7rem] uppercase tracking-[0.2em] text-pine">Inventory</p>
+          <h1 className="mt-2 font-display text-4xl text-ink">Your gear library</h1>
+        </div>
+        <Button className="rounded-xl bg-pine text-white hover:bg-pine/90" onClick={() => router.push("/provider/add-gear")}>
+          + Add gear
+        </Button>
+      </div>
+
+      {loading && inventory.length === 0 ? <p className="mb-4 text-sm text-ink-muted">Loading inventory…</p> : null}
+      {!loading && !inventory.length ? (
+        <EmptyState title="No inventory found" description="You do not have any gear in inventory yet." />
+      ) : (
+        <DataTable
+          columns={[
+            { key: "name", label: "Gear" },
+            { key: "stock", label: "Stock" },
+            { key: "pricePerDay", label: "Price" },
+            { key: "condition", label: "Condition" },
+            { key: "actions", label: "Actions" },
+          ]}
+          data={inventory.map((item) => ({
+            ...item,
+            stock: item.stockQuantity ?? item.stock ?? 0,
+            pricePerDay: item.pricePerDay ? `$${item.pricePerDay}/day` : "—",
+            actions: (
+              <div className="flex items-center gap-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="rounded-lg" onClick={() => openEditor(item)}>
+                      Edit
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Edit gear</DialogTitle>
+                      <DialogDescription>Update the details for this item.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label>Name</Label>
+                        <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Price per day</Label>
+                        <Input type="number" min="0" step="0.01" value={editForm.pricePerDay} onChange={(e) => setEditForm({ ...editForm, pricePerDay: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Stock</Label>
+                        <Input type="number" min="0" step="1" value={editForm.stock} onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })} />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setEditingGear(null)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSave} disabled={saving}>
+                        {saving ? "Saving..." : "Save"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="rounded-lg">
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete gear?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently remove "{item.name}" from your inventory. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        disabled={deletingId === (item.id ?? item._id)}
+                        onClick={() => handleDelete(item.id ?? item._id ?? "")}
+                      >
+                        {deletingId === (item.id ?? item._id) ? "Deleting..." : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ),
+          }))}
+        />
+      )}
+    </DashboardShell>
+  );
+}

@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import { getProviderOrders } from "@/services/provider";
+import { getProviderOrders, updateProviderOrder } from "@/services/provider";
 import { useAuthStore } from "@/store/auth-store";
 import type { Rental } from "@/types";
 
@@ -23,6 +24,7 @@ export default function ProviderOrdersPage() {
   const { isAuthenticated, hasHydrated } = useAuthStore();
   const [orders, setOrders] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -49,6 +51,20 @@ export default function ProviderOrdersPage() {
     void loadData();
   }, [hasHydrated, isAuthenticated, router]);
 
+  const handleStatusChange = async (id: string, status: string) => {
+    setUpdatingId(id);
+    try {
+      await updateProviderOrder(id, status);
+      toast.success(`Order ${status.toLowerCase()}`);
+      const nextOrders = await getProviderOrders();
+      setOrders(Array.isArray(nextOrders) ? nextOrders : []);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update order");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   if (!hasHydrated || !isAuthenticated) {
     return null;
   }
@@ -74,12 +90,39 @@ export default function ProviderOrdersPage() {
             { key: "gear", label: "Item" },
             { key: "dates", label: "Dates" },
             { key: "status", label: "Status" },
+            { key: "actions", label: "Actions" },
           ]}
-          data={orders.map((order) => ({
-            ...order,
-            gear: order.gear?.name ?? "Rental item",
-            dates: order.startDate && order.endDate ? `${order.startDate} – ${order.endDate}` : "Scheduled",
-          }))}
+          data={orders.map((order) => {
+            const orderId = order._id ?? order.id ?? "";
+            const isUpdating = updatingId === orderId;
+            return {
+              ...order,
+              gear: order.gear?.name ?? "Rental item",
+              dates: order.startDate && order.endDate ? `${order.startDate} – ${order.endDate}` : "Scheduled",
+              actions: (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg"
+                    disabled={isUpdating}
+                    onClick={() => handleStatusChange(orderId, "APPROVED")}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="rounded-lg"
+                    disabled={isUpdating}
+                    onClick={() => handleStatusChange(orderId, "REJECTED")}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              ),
+            };
+          })}
         />
       )}
     </DashboardShell>
