@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: b7a5-frontend-gearup
+    runtime: node
+    rootDir: frontend
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    region: singapore
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 24.14.1
