@@ -9,10 +9,32 @@ export const AUTH_COOKIE_NAMES = {
 
 const fallbackBackendBase = "https://gearup-igqw.onrender.com";
 
-export function getBackendBaseUrl() {
-  return process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_API_URL || fallbackBackendBase;
+/**
+ * The backend URL is resolved at RUNTIME here, but at BUILD time in next.config.ts.
+ * If Render injects a trailing slash or an invalid value in one place and not the
+ * other, server-side fetches from route handlers can throw (→ 500) while rewrite
+ * traffic (/api/categories) still works. Normalize + validate so both layers
+ * always converge on a usable URL.
+ */
+function normalizeBackendBaseUrl(value: string) {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  return /^https?:\/\/[^\s]+$/i.test(trimmed) ? trimmed : fallbackBackendBase;
 }
 
+export function getBackendBaseUrl() {
+  const resolved =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.BACKEND_API_URL ||
+    fallbackBackendBase;
+  return normalizeBackendBaseUrl(resolved);
+}
+
+/**
+ * Frontend cookies are set on the FRONTEND origin by Next.js route handlers, so
+ * the browser sees them as same-site. "lax" + secure in production is correct for
+ * this architecture. "none" is only needed if the browser talks to the backend
+ * origin directly (see backend auth.controller.ts cookie flags).
+ */
 function getCookieFlags(maxAge: number, httpOnly = true) {
   const secure = process.env.NODE_ENV === "production";
   return {
@@ -149,11 +171,26 @@ export async function refreshSession(cookieStore: Awaited<ReturnType<typeof cook
   return accessToken;
 }
 
-export async function proxyToBackend(request: NextRequest, pathSegments: string[], authCookieName = AUTH_COOKIE_NAMES.access) {
+type ProxyToBackendOptions = {
+  authCookieName?: string;
+  /**
+   * Set to false for public endpoints (e.g. register/login) that must not require
+   * an access-token cookie before being forwarded to the backend.
+   */
+  authRequired?: boolean;
+};
+
+export async function proxyToBackend(
+  request: NextRequest,
+  pathSegments: string[],
+  options: ProxyToBackendOptions = {},
+) {
+  const { authCookieName = AUTH_COOKIE_NAMES.access, authRequired = true } = options;
+
   const cookieStore = await getCookieStore();
   const accessToken = cookieStore.get(authCookieName)?.value;
 
-  if (!accessToken) {
+  if (authRequired && !accessToken) {
     return NextResponse.json({ success: false, message: "Authentication required" }, { status: 401 });
   }
 
@@ -162,21 +199,26 @@ export async function proxyToBackend(request: NextRequest, pathSegments: string[
   const targetPath = pathSegments.length ? pathSegments.join("/") : "";
   const targetUrl = new URL(`${backendBase}/api/${targetPath}${originalUrl.search}`);
 
+  // Read the body exactly once. Re-reading request.text() on the 401-retry path
+  // returns an empty string silently, which would drop POST/PUT/PATCH payloads.
+  const requestBody = ["GET", "HEAD"].includes(request.method) ? undefined : await request.text();
+
   const headers = new Headers(request.headers);
-  headers.set("Authorization", `Bearer ${accessToken}`);
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
   headers.delete("host");
 
-  const body = ["GET", "HEAD"].includes(request.method) ? undefined : await request.text();
   const init: RequestInit = {
     method: request.method,
     headers,
-    body,
+    body: requestBody,
     cache: "no-store",
   };
 
   let response = await fetch(targetUrl, init);
 
-  if (response.status === 401) {
+  if (response.status === 401 && accessToken) {
     const refreshedToken = await refreshSession(cookieStore);
     if (!refreshedToken) {
       return NextResponse.json({ success: false, message: "Authentication required" }, { status: 401 });
@@ -186,11 +228,10 @@ export async function proxyToBackend(request: NextRequest, pathSegments: string[
     retryHeaders.set("Authorization", `Bearer ${refreshedToken}`);
     retryHeaders.delete("host");
 
-    const retryBody = ["GET", "HEAD"].includes(request.method) ? undefined : await request.text();
     response = await fetch(targetUrl, {
       ...init,
       headers: retryHeaders,
-      body: retryBody,
+      body: requestBody,
     });
   }
 
