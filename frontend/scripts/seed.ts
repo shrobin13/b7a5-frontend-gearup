@@ -1,4 +1,4 @@
-const BACKEND_BASE = process.env.BACKEND_API_URL ?? "https://gearup-igqw.onrender.com";
+const BACKEND_BASE = process.env.NEXT_PUBLIC_API_URL ?? process.env.BACKEND_API_URL ?? "";
 const UNCATEGORIZED_CATEGORY_ID = "0f9b8502-b642-4c2b-8e63-5f7bf02a5799";
 
 const PASSWORD = "GearUp@2026!";
