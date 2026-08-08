@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { confirmPayment, getPaymentById } from "@/services/payment";
 import type { Payment } from "@/types";
 
@@ -24,16 +25,26 @@ export default function PaymentSuccessPage() {
       setError(null);
 
       try {
+        let nextPayment: Payment | null = null;
+
         if (paymentId) {
-          const nextPayment = await getPaymentById(paymentId);
+          nextPayment = await getPaymentById(paymentId);
           setPayment(nextPayment);
         }
 
-        if (paymentId || rentalId) {
-          await confirmPayment({ paymentId, rentalOrderId: rentalId });
+        if (paymentId) {
+          const transactionId =
+            (nextPayment as { transactionId?: string } | null)?.transactionId ?? "";
+          if (transactionId) {
+            await confirmPayment({ paymentId, transactionId });
+          }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not load payment details");
+        const message = err instanceof Error ? err.message : "Could not load payment details";
+
+        if (!/already completed/i.test(message)) {
+          setError(message);
+        }
       } finally {
         setLoading(false);
       }
@@ -61,7 +72,10 @@ export default function PaymentSuccessPage() {
           </p>
 
           {loading ? (
-            <p className="mt-8 text-sm text-ink-muted">Loading payment details…</p>
+            <div className="mx-auto mt-8 max-w-md space-y-3 rounded-2xl border border-border bg-surface-muted p-4">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/3" />
+            </div>
           ) : error ? (
             <p className="mt-8 text-sm text-destructive">{error}</p>
           ) : (

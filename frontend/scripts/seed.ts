@@ -1,27 +1,9 @@
-/**
- * GearUp Seeder
- *
- * Seeds the backend with:
- *   - 1 ADMIN user
- *   - 1 CUSTOMER user
- *   - 3 PROVIDER users
- *   - Multiple gear items per provider (using the provider's access token)
- *
- * Usage:
- *   pnpm tsx scripts/seed.ts
- *   # or
- *   npx tsx scripts/seed.ts
- *
- * The backend base URL defaults to https://gearup-igqw.onrender.com
- * and can be overridden with the BACKEND_API_URL env var.
- */
-
 const BACKEND_BASE = process.env.BACKEND_API_URL ?? "https://gearup-igqw.onrender.com";
 const UNCATEGORIZED_CATEGORY_ID = "0f9b8502-b642-4c2b-8e63-5f7bf02a5799";
 
 const PASSWORD = "GearUp@2026!";
 
-type RegisterResponse = {
+type LoginResponse = {
   success?: boolean;
   statusCode?: number;
   message?: string;
@@ -32,6 +14,20 @@ type RegisterResponse = {
   };
 };
 
+type MeResponse = {
+  success?: boolean;
+  statusCode?: number;
+  message?: string;
+  data?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    role?: string;
+  };
+};
+
+type RegisterResponse = LoginResponse;
+
 type GearPayload = {
   name: string;
   description?: string;
@@ -40,10 +36,6 @@ type GearPayload = {
   pricePerDay: number;
   stockQuantity: number;
   condition?: string;
-};
-
-type GearSeed = Omit<GearPayload, "categoryId"> & {
-  category: string;
 };
 
 type CategoryPayload = {
@@ -136,6 +128,25 @@ async function api<T>(path: string, options: { method?: string; token?: string; 
   return data as T;
 }
 
+async function loginUser(email: string): Promise<{ user: { id?: string; name?: string; email?: string; role?: string }; token: string }> {
+  const response = await api<LoginResponse>("/api/auth/login", {
+    method: "POST",
+    body: { email, password: PASSWORD },
+  });
+  const token = response.data?.accessToken;
+  if (!token) throw new Error(`Login failed for ${email}: missing access token`);
+
+  const me = await api<MeResponse>("/api/auth/me", {
+    method: "GET",
+    token,
+  });
+  const user = me.data;
+  if (!user?.id || !user.email) throw new Error(`Login failed for ${email}: could not load user profile`);
+
+  console.log(`  ✓ Logged in: ${user.role ?? "user"} ${user.name ?? user.email} (id: ${user.id})`);
+  return { user, token };
+}
+
 async function registerUser(payload: {
   name: string;
   email: string;
@@ -144,7 +155,7 @@ async function registerUser(payload: {
   phone?: string;
   address?: string;
   role: "ADMIN" | "PROVIDER" | "CUSTOMER";
-}) {
+}): Promise<{ user: { id?: string; name?: string; email?: string; role?: string }; token: string } | null> {
   try {
     const response = await api<RegisterResponse>("/api/auth/register", {
       method: "POST",
@@ -158,8 +169,8 @@ async function registerUser(payload: {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("already exists") || message.toLowerCase().includes("duplicate")) {
-      console.log(`  ⚠ ${payload.email} already exists — skipping`);
-      return null;
+      console.log(`  ⚠ ${payload.email} already exists — logging in`);
+      return loginUser(payload.email);
     }
     throw error;
   }
@@ -174,6 +185,11 @@ async function createCategory(token: string, category: CategoryPayload) {
   return response.data;
 }
 
+async function getAllCategories() {
+  const response = await api<{ data?: Array<{ id?: string; name?: string; description?: string }> }>("/api/categories");
+  return response.data ?? [];
+}
+
 async function createGear(token: string, gear: Omit<GearPayload, "categoryId">, categoryId: string) {
   const payload: GearPayload = { ...gear, categoryId };
   const response = await api<{ data?: { id?: string; name?: string } }>("/api/provider/gear", {
@@ -184,11 +200,27 @@ async function createGear(token: string, gear: Omit<GearPayload, "categoryId">, 
   return response.data;
 }
 
+async function updateGear(token: string, gearId: string, patch: Partial<GearPayload>) {
+  const response = await api<{ data?: { id?: string; name?: string } }>(`/api/provider/gear/${gearId}`, {
+    method: "PUT",
+    token,
+    body: patch,
+  });
+  return response.data;
+}
+
+async function getProviderGear(token: string) {
+  const response = await api<{ data?: Array<{ id?: string; name?: string; categoryId?: string | null }> }>("/api/provider/gear", {
+    method: "GET",
+    token,
+  });
+  return response.data ?? [];
+}
+
 async function main() {
   console.log(`\n🌱 GearUp Seeder`);
   console.log(`   Backend: ${BACKEND_BASE}\n`);
 
-  // 1. Register ADMIN
   console.log("👑 Admin:");
   const admin = await registerUser({
     name: ADMIN.name,
@@ -200,11 +232,17 @@ async function main() {
     role: "ADMIN",
   });
 
-  // 1b. Create categories (admin only)
   const categoryIdMap = new Map<string, string>();
   if (admin) {
     console.log("\n📂 Categories:");
+    const existingCategories = await getAllCategories();
     for (const category of CATEGORY_DEFS) {
+      const existing = existingCategories.find((c) => c.name?.toLowerCase() === category.name.toLowerCase());
+      if (existing?.id) {
+        categoryIdMap.set(category.name, existing.id);
+        console.log(`  ⚠ Category "${category.name}" already exists — reusing id ${existing.id}`);
+        continue;
+      }
       try {
         const created = await createCategory(admin.token, category);
         categoryIdMap.set(category.name, created?.id ?? "");
@@ -218,11 +256,21 @@ async function main() {
         }
       }
     }
+
+    for (const category of CATEGORY_DEFS) {
+      if (!categoryIdMap.get(category.name)) {
+        const fresh = await getAllCategories();
+        const match = fresh.find((c) => c.name?.toLowerCase() === category.name.toLowerCase());
+        if (match?.id) {
+          categoryIdMap.set(category.name, match.id);
+          console.log(`  ✓ Resolved category "${category.name}" → ${match.id}`);
+        }
+      }
+    }
   }
 
-  // 2. Register CUSTOMER
   console.log("\n🧑 Customer:");
-  const customer = await registerUser({
+  await registerUser({
     name: CUSTOMER.name,
     email: CUSTOMER.email,
     password: PASSWORD,
@@ -232,7 +280,6 @@ async function main() {
     role: "CUSTOMER",
   });
 
-  // 3. Register PROVIDERS and create their gear
   console.log("\n🏕️ Providers & Gear:");
   for (const provider of PROVIDERS) {
     console.log(`\n  ${provider.name}:`);
@@ -248,27 +295,43 @@ async function main() {
 
     if (!result) continue;
 
+    const existingGear = await getProviderGear(result.token);
+
     for (const gear of provider.gear) {
       try {
         const categoryId = categoryIdMap.get(gear.category) ?? UNCATEGORIZED_CATEGORY_ID;
-        const created = await createGear(result.token, gear, categoryId);
-        console.log(`    ✓ Created gear: ${created?.name ?? gear.name} (${gear.category})`);
+        const existing = existingGear.find((g) => g.name?.toLowerCase() === gear.name.toLowerCase());
+
+        if (existing?.id) {
+          if (existing.categoryId !== categoryId) {
+            await updateGear(result.token, existing.id, { categoryId });
+            console.log(`    ↻ Updated existing gear: ${gear.name} → ${gear.category}`);
+          } else {
+            console.log(`    = Gear already correct: ${gear.name} (${gear.category})`);
+          }
+        } else {
+          const created = await createGear(result.token, gear, categoryId);
+          console.log(`    ✓ Created gear: ${created?.name ?? gear.name} (${gear.category})`);
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.log(`    ✗ Failed to create gear "${gear.name}": ${message}`);
+        console.log(`    ✗ Failed to process gear "${gear.name}": ${message}`);
       }
     }
   }
 
-  // 4. Summary
   console.log("\n──────────────────────────────");
   console.log("✅ Seeding complete!");
   console.log("\nTest credentials (password for all):");
   console.log(`  ${PASSWORD}`);
   console.log("\nAccounts:");
   if (admin) console.log(`  ADMIN    → ${ADMIN.email}`);
-  if (customer) console.log(`  CUSTOMER → ${CUSTOMER.email}`);
+  console.log(`  CUSTOMER → ${CUSTOMER.email}`);
   for (const p of PROVIDERS) console.log(`  PROVIDER → ${p.email}`);
+  console.log("\nCategories:");
+  for (const category of CATEGORY_DEFS) {
+    console.log(`  - ${category.name} → ${categoryIdMap.get(category.name) ?? "⚠️ missing"}`);
+  }
   console.log("");
 }
 

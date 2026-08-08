@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { deleteAdminGear, getAdminGear } from "@/services/admin";
 import { useAuthStore } from "@/store/auth-store";
 import type { Gear } from "@/types";
@@ -87,8 +88,15 @@ export default function AdminGearPage() {
         <h1 className="mt-2 font-display text-4xl text-ink">Moderation queue</h1>
       </div>
 
-      {loading && gear.length === 0 ? <p className="mb-4 text-sm text-ink-muted">Loading gear…</p> : null}
-      {!loading && !gear.length ? (
+      {loading && gear.length === 0 ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-12 w-full">
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          ))}
+        </div>
+      ) : !loading && !gear.length ? (
         <EmptyState title="No gear found" description="There is no gear data to review right now." />
       ) : (
         <DataTable

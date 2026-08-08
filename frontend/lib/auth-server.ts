@@ -75,7 +75,6 @@ export async function setSessionCookies(cookieStore: Awaited<ReturnType<typeof c
 export async function clearSessionCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   const isProduction = process.env.NODE_ENV === "production";
 
-  // Explicitly expire each cookie with matching attributes so browsers honour the deletion
   for (const name of [AUTH_COOKIE_NAMES.access, AUTH_COOKIE_NAMES.refresh]) {
     cookieStore.set(name, "", {
       httpOnly: true,

@@ -50,9 +50,7 @@ export default function ProfilePage() {
         if (nextUser) {
           setAuth(nextUser);
         }
-      } catch {
-        // Keep the cached user if the refresh fails.
-      }
+      } catch {}
     }
 
     void refreshProfile();

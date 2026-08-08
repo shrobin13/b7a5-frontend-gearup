@@ -7,6 +7,7 @@ import { MetricCard } from "@/components/shared/metric-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getAdminGear, getAdminRentals, getAdminUsers } from "@/services/admin";
 import { useAuthStore } from "@/store/auth-store";
 import type { AppUser, Gear, Rental } from "@/types";
@@ -78,14 +79,24 @@ export default function AdminDashboardPage() {
         <h1 className="mt-2 font-display text-4xl text-ink">Platform overview, {displayName}</h1>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard title="Users" value={String(users.length)} detail="registered" tone="ink" />
-        <MetricCard title="Gear" value={String(gear.length)} detail="listings" tone="pine" />
-        <MetricCard title="Rentals" value={String(rentals.length)} detail="active" tone="accent" />
-        <MetricCard title="Revenue" value={`$${revenue}`} detail="monthly" tone="ink" />
-      </div>
-
-      <p className="mt-4 text-sm text-ink-muted">{loading ? "Syncing latest data..." : "Data refreshed successfully."}</p>
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="mt-3 h-8 w-20" />
+              <Skeleton className="mt-2 h-3 w-12" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-4">
+          <MetricCard title="Users" value={String(users.length)} detail="registered" tone="ink" />
+          <MetricCard title="Gear" value={String(gear.length)} detail="listings" tone="pine" />
+          <MetricCard title="Rentals" value={String(rentals.length)} detail="active" tone="accent" />
+          <MetricCard title="Revenue" value={`$${revenue}`} detail="monthly" tone="ink" />
+        </div>
+      )}
 
       <div className="mt-8">
         <Card className="border border-border bg-surface">

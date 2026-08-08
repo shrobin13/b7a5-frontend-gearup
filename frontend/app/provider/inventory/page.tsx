@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,12 +57,10 @@ export default function ProviderInventoryPage() {
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
 
-  // Detail dialog (getProviderGearById)
   const [detailGear, setDetailGear] = useState<Gear | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // Edit dialog (updateGear)
   const [editGear, setEditGear] = useState<Gear | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<EditForm>({ name: "", pricePerDay: "", stock: "", condition: "" });
@@ -207,7 +206,15 @@ export default function ProviderInventoryPage() {
         </Button>
       </div>
 
-      {loading && inventory.length === 0 ? <p className="mb-4 text-sm text-ink-muted">Loading inventory…</p> : null}
+      {loading && inventory.length === 0 ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-12 w-full">
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          ))}
+        </div>
+      ) : null}
       {!loading && !inventory.length ? (
         <EmptyState
           title="No inventory found"
@@ -288,7 +295,6 @@ export default function ProviderInventoryPage() {
         />
       )}
 
-      {/* Gear detail dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent>
           <DialogHeader>
@@ -296,7 +302,11 @@ export default function ProviderInventoryPage() {
             <DialogDescription>Details from the provider catalog.</DialogDescription>
           </DialogHeader>
           {detailLoading ? (
-            <p className="text-sm text-muted-foreground">Loading details…</p>
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/3" />
+            </div>
           ) : detailGear ? (
             <div className="space-y-2 text-sm">
               <div className="flex justify-between gap-3">
@@ -324,7 +334,6 @@ export default function ProviderInventoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit gear dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>

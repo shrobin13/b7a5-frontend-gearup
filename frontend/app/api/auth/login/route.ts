@@ -27,8 +27,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: "Invalid login response" }, { status: 500 });
   }
 
-  // The login endpoint only guarantees tokens (see Postman tests) — it may not
-  // include the full user object. Fetch it explicitly so we get the real role.
   let user: Record<string, unknown> | null = null;
   try {
     const meResponse = await fetch(`${backendBase}/api/auth/me`, {

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getAdminUsers, updateUserRole } from "@/services/admin";
 import { useAuthStore } from "@/store/auth-store";
 import type { AppUser } from "@/types";
@@ -90,15 +91,24 @@ export default function AdminUsersPage() {
         <Button className="rounded-xl bg-ink text-white hover:bg-ink/90">Invite user</Button>
       </div>
 
-      <DataTable
-        columns={[
-          { key: "name", label: "Name" },
-          { key: "email", label: "Email" },
-          { key: "role", label: "Role" },
-          { key: "status", label: "Status" },
-          { key: "actions", label: "Actions" },
-        ]}
-        data={users.map((user) => ({
+      {loading && users.length === 0 ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-12 w-full">
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <DataTable
+          columns={[
+            { key: "name", label: "Name" },
+            { key: "email", label: "Email" },
+            { key: "role", label: "Role" },
+            { key: "status", label: "Status" },
+            { key: "actions", label: "Actions" },
+          ]}
+          data={users.map((user) => ({
           ...user,
           status: user.status ?? (user.isActive === false ? "SUSPENDED" : "ACTIVE"),
           actions: (
@@ -147,9 +157,8 @@ export default function AdminUsersPage() {
             </Dialog>
           ),
         }))}
-      />
-
-      {loading && users.length === 0 ? <p className="mt-4 text-sm text-ink-muted">Loading users…</p> : null}
+        />
+      )}
     </DashboardShell>
   );
 }

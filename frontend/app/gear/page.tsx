@@ -9,6 +9,7 @@ import { GearCard } from "@/components/shared/gear-card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getCategoryName } from "@/lib/utils";
 
 type GearItem = {
@@ -33,10 +34,8 @@ export default function GearPage() {
   const [items, setItems] = useState<GearItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Categories from the backend (real categories)
   const [backendCategories, setBackendCategories] = useState<string[]>([]);
 
-  // Filter state
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState(Infinity);
   const [availability, setAvailability] = useState<"any" | "available">("any");
@@ -55,9 +54,7 @@ export default function GearPage() {
             .filter((name): name is string => Boolean(name));
           setBackendCategories(Array.from(new Set(names)));
         }
-      } catch {
-        // Categories are optional — the items themselves still populate filters.
-      }
+      } catch {}
     };
 
     void loadCategories();
@@ -103,9 +100,6 @@ export default function GearPage() {
     };
   }, []);
 
-  // Merge backend categories with categories found in the loaded items so the
-  // filters only show categories that actually exist in the data. This prevents
-  // users from selecting a category that has no matching products.
   const categories = useMemo(() => {
     const set = new Set<string>(backendCategories);
     for (const item of items) {
@@ -222,7 +216,6 @@ export default function GearPage() {
           </div>
 
           <div className="mt-5 space-y-5 text-sm text-ink-muted">
-            {/* Category */}
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <p className="font-medium text-foreground">Category</p>
@@ -262,7 +255,6 @@ export default function GearPage() {
 
             <Separator />
 
-            {/* Price range */}
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <p className="font-medium text-foreground">Price range</p>
@@ -288,7 +280,6 @@ export default function GearPage() {
 
             <Separator />
 
-            {/* Availability */}
             <div>
               <p className="mb-3 font-medium text-foreground">Availability</p>
               <div className="space-y-2.5">
@@ -340,7 +331,15 @@ export default function GearPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-ink-muted">Loading gear…</p>
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="space-y-3">
+                  <Skeleton className="h-48 w-full rounded-xl" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              ))}
+            </div>
           ) : filtered.length ? (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {filtered.map((item) => (

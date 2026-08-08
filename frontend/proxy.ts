@@ -10,7 +10,6 @@ export function proxy(request: NextRequest) {
 
   const isAuthenticated = !!accessToken;
 
-  // Redirect guests away from protected routes
   if (
     (pathname.startsWith("/dashboard") ||
       pathname.startsWith("/provider") ||
@@ -20,7 +19,6 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Prevent logged in users from visiting login/register
   if (AUTH_ROUTES.includes(pathname) && isAuthenticated) {
     switch (role) {
       case "ADMIN":
@@ -34,7 +32,6 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // Provider routes
   if (
     pathname.startsWith("/provider") &&
     role !== "PROVIDER" &&
@@ -43,7 +40,6 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // Admin routes
   if (pathname.startsWith("/admin") && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }

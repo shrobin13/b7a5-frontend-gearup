@@ -7,6 +7,7 @@ import { ArrowLeft, CircleX, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cancelRental } from "@/services/customer";
+import { getPaymentById } from "@/services/payment";
 
 export default function PaymentCancelPage() {
   const searchParams = useSearchParams();
@@ -15,29 +16,37 @@ export default function PaymentCancelPage() {
 
   const [cancelled, setCancelled] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function cancelBooking() {
-      if (!rentalId) {
-        return;
-      }
+      let targetRentalId = rentalId;
 
       try {
-        await cancelRental(rentalId);
-        setCancelled(true);
+        if (!targetRentalId && paymentId) {
+          const payment = await getPaymentById(paymentId);
+          const nested = (payment as { rentalOrder?: { id?: string; _id?: string } }).rentalOrder;
+          targetRentalId = nested?.id ?? nested?._id ?? "";
+        }
+
+        if (targetRentalId) {
+          await cancelRental(targetRentalId);
+          setCancelled(true);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not cancel the rental");
+      } finally {
+        setLoading(false);
       }
     }
 
     void cancelBooking();
-  }, [rentalId]);
+  }, [paymentId, rentalId]);
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
       <Card className="border border-border bg-surface shadow-[0_18px_42px_rgba(26,36,32,0.05)]">
         <CardContent className="p-8 text-center md:p-12">
-          {/* Icon */}
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-surface-muted text-ink-muted">
             <CircleX className="h-8 w-8" />
           </div>
@@ -56,13 +65,14 @@ export default function PaymentCancelPage() {
 
           {error ? (
             <p className="mt-6 text-sm text-destructive">{error}</p>
+          ) : loading ? (
+            <p className="mt-6 text-sm text-ink-muted">Cancelling your pending booking…</p>
           ) : cancelled ? (
             <p className="mt-6 text-sm text-ink-muted">
               Your pending booking has been cancelled.
             </p>
           ) : null}
 
-          {/* Payment ID detail card */}
           {paymentId && (
             <div className="mx-auto mt-8 max-w-md rounded-2xl border border-border bg-surface-muted p-4 text-left text-sm text-ink-muted">
               <div className="flex items-center gap-2 mb-3">
@@ -77,10 +87,22 @@ export default function PaymentCancelPage() {
               </div>
               <div className="mt-3 flex items-center justify-between gap-3">
                 <span>Status</span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                  Cancelled
-                </span>
+                {cancelled ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    Cancelled
+                  </span>
+                ) : error ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    {loading ? "Cancelling…" : "Cancellation failed"}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted px-2.5 py-0.5 text-xs font-medium text-ink-muted">
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    {loading ? "Cancelling…" : "Checkout canceled"}
+                  </span>
+                )}
               </div>
             </div>
           )}

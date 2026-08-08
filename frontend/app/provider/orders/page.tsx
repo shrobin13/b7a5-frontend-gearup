@@ -7,6 +7,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getProviderOrders, updateProviderOrder } from "@/services/provider";
 import { useAuthStore } from "@/store/auth-store";
 import type { Rental } from "@/types";
@@ -81,7 +82,15 @@ export default function ProviderOrdersPage() {
         </Button>
       </div>
 
-      {loading && orders.length === 0 ? <p className="mb-4 text-sm text-ink-muted">Loading orders…</p> : null}
+      {loading && orders.length === 0 ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-12 w-full">
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          ))}
+        </div>
+      ) : null}
       {!loading && !orders.length ? (
         <EmptyState title="No orders found" description="You do not have any booking requests right now." />
       ) : (

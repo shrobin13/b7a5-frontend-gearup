@@ -89,7 +89,6 @@ function getErrorMessageFromPayload(payload: unknown): string {
     return rawMessage.trim();
   };
 
-  // Prefer specific validation errors over generic top-level messages.
   if (Array.isArray(candidate.errors)) {
     const entries = candidate.errors
       .map((entry) => {

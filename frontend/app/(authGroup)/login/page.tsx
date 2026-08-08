@@ -48,9 +48,6 @@ export default function LoginPage() {
 
       const user = (payload.user ?? payload.data?.user ?? null) as AppUser | null;
 
-      // Update the store immediately. Don't rely on Providers' one-time
-      // hydrate() to notice we're logged in — it only runs once on app mount
-      // and this login is a client-side navigation, not a full page reload.
       setAuth(user);
 
       toast.success(payload.message || "Login successful!");

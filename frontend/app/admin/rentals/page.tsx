@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cancelAdminRental, getAdminRentals } from "@/services/admin";
 import { useAuthStore } from "@/store/auth-store";
 import type { Rental } from "@/types";
@@ -91,8 +92,15 @@ export default function AdminRentalsPage() {
         <h1 className="mt-2 font-display text-4xl text-ink">Booking activity</h1>
       </div>
 
-      {loading && rentals.length === 0 ? <p className="mb-4 text-sm text-ink-muted">Loading rentals…</p> : null}
-      {!loading && !rentals.length ? (
+      {loading && rentals.length === 0 ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-12 w-full">
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          ))}
+        </div>
+      ) : !loading && !rentals.length ? (
         <EmptyState title="No rentals found" description="There are no rental records to show right now." />
       ) : (
         <DataTable

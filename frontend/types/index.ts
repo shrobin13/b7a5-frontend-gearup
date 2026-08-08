@@ -49,6 +49,8 @@ export type Payment = {
   amount?: number;
   currency?: string;
   provider?: string;
+  transactionId?: string;
+  rentalOrder?: Rental;
 };
 
 export type Review = {

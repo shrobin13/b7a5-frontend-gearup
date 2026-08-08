@@ -17,7 +17,6 @@ export function SiteHeader() {
     try {
       await logout();
     } catch {
-      // proceed with local clear even if the API call fails
     } finally {
       clearAuth();
       router.push("/");

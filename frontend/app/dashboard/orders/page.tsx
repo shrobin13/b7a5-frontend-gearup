@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cancelRental, getMyRentals, getRentalById } from "@/services/customer";
 import { useAuthStore } from "@/store/auth-store";
 import type { Rental } from "@/types";
@@ -35,7 +36,6 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  // Detail dialog (getRentalById)
   const [detailRental, setDetailRental] = useState<Rental | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -110,7 +110,16 @@ export default function OrdersPage() {
         <h1 className="mt-2 font-display text-4xl text-ink">Your reservations</h1>
       </div>
 
-      {loading && rentals.length === 0 ? <p className="mb-4 text-sm text-ink-muted">Loading reservations…</p> : null}
+      {loading && rentals.length === 0 ? (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="rounded-xl border border-border bg-surface p-5">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="mt-3 h-3 w-1/3" />
+            </div>
+          ))}
+        </div>
+      ) : null}
       {!loading && !rentals.length ? (
         <EmptyState
           title="No orders yet"
@@ -159,7 +168,6 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Rental detail dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent>
           <DialogHeader>
@@ -167,7 +175,11 @@ export default function OrdersPage() {
             <DialogDescription>Details for this reservation.</DialogDescription>
           </DialogHeader>
           {detailLoading ? (
-            <p className="text-sm text-muted-foreground">Loading details…</p>
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/3" />
+            </div>
           ) : detailRental ? (
             <div className="space-y-2 text-sm">
               <div className="flex justify-between gap-3">

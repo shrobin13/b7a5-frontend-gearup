@@ -27,6 +27,7 @@ export default function GearDetailPage() {
   const { isAuthenticated } = useAuthStore();
   const [gear, setGear] = useState<{
     id: string;
+    _id?: string;
     name: string;
     category: string;
     price: number;
@@ -45,51 +46,70 @@ export default function GearDetailPage() {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [disabledDates, setDisabledDates] = useState<Date[]>([]);
 
+  const id = params?.id;
+
   useEffect(() => {
-    const id = params?.id;
+    if (!id) {
+      setLoading(false);
+      return;
+    }
 
     const loadGear = async () => {
       setLoading(true);
       try {
         const item = await getGearById(id);
 
-        if (item) {
-          const stockValue = Number(item.stockQuantity ?? item.stock ?? 0);
-          setGear({
-            id: item.id ?? item._id ?? id,
-            name: item.name,
-            category: getCategoryName(item.category),
-            price: Number(item.pricePerDay ?? 0),
-            rating: Number(item.rating ?? 0),
-            available: Boolean(item.isAvailable ?? stockValue > 0),
-            description: item.description ?? "No description available.",
-            stock: stockValue,
-          });
-        } else {
+        if (!item) {
           setGear(null);
+          setReviews([]);
+          return;
         }
 
-        if (id && isAuthenticated) {
-          const [nextReviews, nextRentals] = await Promise.all([getGearReviews(id), getMyRentals()]);
+        const gearId = item.id ?? item._id ?? id;
+        const stockValue = Number(item.stockQuantity ?? item.stock ?? 0);
+        setGear({
+          id: gearId,
+          _id: item._id ?? item.id ?? id,
+          name: item.name,
+          category: getCategoryName(item.category),
+          price: Number(item.pricePerDay ?? 0),
+          rating: Number(item.rating ?? 0),
+          available: Boolean(item.isAvailable ?? stockValue > 0),
+          description: item.description ?? "No description available.",
+          stock: stockValue,
+        });
+
+        try {
+          const nextReviews = await getGearReviews(gearId);
           setReviews(Array.isArray(nextReviews) ? nextReviews : []);
-          const bookedDates = (Array.isArray(nextRentals) ? nextRentals : [])
-            .filter((rental) => {
-              const gearItem = (rental as { items?: { gearItem?: { id?: string; _id?: string } }[] }).items?.[0]?.gearItem;
-              return gearItem?.id === item?.id || gearItem?._id === item?._id;
-            })
-            .flatMap((rental) => {
-              const start = rental.startDate ? new Date(rental.startDate) : null;
-              const end = rental.endDate ? new Date(rental.endDate) : null;
-              if (!start || !end) return [];
-              const dates: Date[] = [];
-              const cursor = new Date(start);
-              while (cursor <= end) {
-                dates.push(new Date(cursor));
-                cursor.setDate(cursor.getDate() + 1);
-              }
-              return dates;
-            });
-          setDisabledDates(bookedDates);
+        } catch {
+          setReviews([]);
+        }
+
+        if (isAuthenticated) {
+          try {
+            const nextRentals = await getMyRentals();
+            const bookedDates = (Array.isArray(nextRentals) ? nextRentals : [])
+              .filter((rental) => {
+                const gearItem = (rental as { items?: { gearItem?: { id?: string; _id?: string } }[] }).items?.[0]?.gearItem;
+                return gearItem?.id === gearId || gearItem?._id === gearId;
+              })
+              .flatMap((rental) => {
+                const start = rental.startDate ? new Date(rental.startDate) : null;
+                const end = rental.endDate ? new Date(rental.endDate) : null;
+                if (!start || !end) return [];
+                const dates: Date[] = [];
+                const cursor = new Date(start);
+                while (cursor <= end) {
+                  dates.push(new Date(cursor));
+                  cursor.setDate(cursor.getDate() + 1);
+                }
+                return dates;
+              });
+            setDisabledDates(bookedDates);
+          } catch {
+            setDisabledDates([]);
+          }
         }
       } catch {
         setGear(null);
@@ -100,12 +120,12 @@ export default function GearDetailPage() {
     };
 
     void loadGear();
-  }, [params, isAuthenticated]);
+  }, [id, isAuthenticated]);
 
   const canSubmitReview = useMemo(() => {
     if (!gear?.id || !isAuthenticated) return false;
-    return reviews.some((review) => review.gearId === gear.id);
-  }, [gear?.id, isAuthenticated, reviews]);
+    return !reviews.some((review) => review.gearId === gear.id || review.gearId === gear._id);
+  }, [gear?._id, gear?.id, isAuthenticated, reviews]);
 
   const nights = useMemo(() => {
     if (!range.from || !range.to) return 0;
@@ -218,7 +238,7 @@ export default function GearDetailPage() {
           <div className="flex items-center gap-2 text-sm text-ink-muted">
             <Star className="h-4 w-4 fill-gold text-gold" />
             <span>{gear.rating}</span>
-            <span>(23 reviews)</span>
+            <span>({reviews.length} reviews)</span>
           </div>
 
           <div className="mt-4 flex items-center justify-between gap-3">
@@ -308,13 +328,13 @@ export default function GearDetailPage() {
                 <Button onClick={handleReviewSubmit} className="rounded-xl">Post review</Button>
               </div>
             ) : null}
-            {reviews.length ? reviews.map((review) => (
-              <div key={review._id ?? review.id ?? review.comment} className="rounded-2xl border border-border bg-surface-muted p-4">
+            {reviews.length ? reviews.map((review, index) => (
+              <div key={review._id ?? review.id ?? `${review.comment ?? "review"}-${index}`} className="rounded-2xl border border-border bg-surface-muted p-4">
                 <div className="flex items-center justify-between gap-4">
                   <span className="font-medium text-foreground">{review.user?.name ?? "Guest"}</span>
                   <div className="flex items-center gap-1 text-gold">
-                    {Array.from({ length: review.rating ?? 0 }).map((_, index) => (
-                      <Star key={`${review._id ?? review.id ?? review.comment}-${index}`} className="h-4 w-4 fill-gold text-gold" />
+                    {Array.from({ length: review.rating ?? 0 }).map((_, starIndex) => (
+                      <Star key={`${review._id ?? review.id ?? review.comment}-${starIndex}`} className="h-4 w-4 fill-gold text-gold" />
                     ))}
                   </div>
                 </div>
