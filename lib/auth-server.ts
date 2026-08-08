@@ -7,8 +7,10 @@ export const AUTH_COOKIE_NAMES = {
   role: "gearup-role",
 } as const;
 
+const fallbackBackendBase = "https://gearup-igqw.onrender.com";
+
 export function getBackendBaseUrl() {
-  return process.env.NEXT_PUBLIC_API_URL ?? process.env.BACKEND_API_URL ?? "";
+  return process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_API_URL || fallbackBackendBase;
 }
 
 function getCookieFlags(maxAge: number, httpOnly = true) {

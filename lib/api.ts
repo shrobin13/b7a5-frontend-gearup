@@ -1,4 +1,6 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.BACKEND_API_URL ?? "";
+const fallbackBackendBase = "https://gearup-igqw.onrender.com";
+
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_API_URL || fallbackBackendBase;
 
 
 export type ApiResponse<T> = T;
