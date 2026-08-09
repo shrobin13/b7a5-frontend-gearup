@@ -57,9 +57,15 @@ export type Review = {
   _id?: string;
   id?: string;
   gearId?: string;
+  gearItemId?: string;
   rating?: number;
   comment?: string;
   user?: {
+    name?: string;
+    email?: string;
+  };
+  customer?: {
+    id?: string;
     name?: string;
     email?: string;
   };

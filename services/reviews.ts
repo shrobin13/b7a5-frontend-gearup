@@ -19,7 +19,7 @@ function unwrapApiEnvelope<T>(payload: ApiEnvelope<T> | T): T {
 }
 
 export type ReviewPayload = {
-  gearId: string;
+  gearItemId: string;
   rating: number;
   comment?: string;
 };

@@ -124,7 +124,13 @@ export default function GearDetailPage() {
 
   const canSubmitReview = useMemo(() => {
     if (!gear?.id || !isAuthenticated) return false;
-    return !reviews.some((review) => review.gearId === gear.id || review.gearId === gear._id);
+    return !reviews.some(
+      (review) =>
+        review.gearItemId === gear.id ||
+        review.gearItemId === gear._id ||
+        review.gearId === gear.id ||
+        review.gearId === gear._id
+    );
   }, [gear?._id, gear?.id, isAuthenticated, reviews]);
 
   const nights = useMemo(() => {
@@ -183,7 +189,7 @@ export default function GearDetailPage() {
   const handleReviewSubmit = async () => {
     if (!gear?.id || !isAuthenticated || !reviewText.trim()) return;
     try {
-      const created = await createReview({ gearId: gear.id, rating: reviewRating, comment: reviewText });
+      const created = await createReview({ gearItemId: gear.id, rating: reviewRating, comment: reviewText });
       setReviews((prev) => [created, ...prev]);
       setReviewText("");
       setReviewRating(5);
@@ -331,7 +337,7 @@ export default function GearDetailPage() {
             {reviews.length ? reviews.map((review, index) => (
               <div key={review._id ?? review.id ?? `${review.comment ?? "review"}-${index}`} className="rounded-2xl border border-border bg-surface-muted p-4">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="font-medium text-foreground">{review.user?.name ?? "Guest"}</span>
+                  <span className="font-medium text-foreground">{review.customer?.name ?? review.user?.name ?? "Guest"}</span>
                   <div className="flex items-center gap-1 text-gold">
                     {Array.from({ length: review.rating ?? 0 }).map((_, starIndex) => (
                       <Star key={`${review._id ?? review.id ?? review.comment}-${starIndex}`} className="h-4 w-4 fill-gold text-gold" />
