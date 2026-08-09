@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getProviderGear, getProviderOrders } from "@/services/provider";
 import { useAuthStore } from "@/store/auth-store";
+import { getRentalItemName } from "@/lib/utils";
 import type { Gear, Rental } from "@/types";
 
 const sidebarItems = [
@@ -91,7 +92,7 @@ export default function ProviderDashboardPage() {
               orders.map((order) => (
                 <div key={order._id ?? `${order.gear?.name}-${order.status}`} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface-muted p-4 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-medium text-foreground">{order.gear?.name ?? "Rental item"}</p>
+                    <p className="font-medium text-foreground">{getRentalItemName(order) ?? "Rental item"}</p>
                     <p className="mt-1 text-sm text-ink-muted">{order.startDate && order.endDate ? `${order.startDate} – ${order.endDate}` : "Booking request"}</p>
                   </div>
                   <div className="flex items-center gap-3">

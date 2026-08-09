@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getMyPayments, getMyRentals } from "@/services/customer";
 import { useAuthStore } from "@/store/auth-store";
+import { getRentalItemName } from "@/lib/utils";
 import type { Payment, Rental } from "@/types";
 
 const sidebarItems = [
@@ -62,7 +63,7 @@ export default function DashboardPage() {
   const totalSpent = payments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
 
   const recentActivity = [
-    ...activeRentals.slice(0, 2).map((rental) => `Booked ${rental.gear?.name ?? "gear"}`),
+    ...activeRentals.slice(0, 2).map((rental) => `Booked ${getRentalItemName(rental) ?? "gear"}`),
     ...payments.slice(0, 1).map((payment) => `Paid $${payment.amount ?? 0}`),
   ];
 
@@ -96,7 +97,7 @@ export default function DashboardPage() {
               activeRentals.map((rental) => (
                 <div key={rental._id ?? rental.gear?.name} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface-muted p-4 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-medium text-foreground">{rental.gear?.name ?? "Rental item"}</p>
+                    <p className="font-medium text-foreground">{getRentalItemName(rental) ?? "Rental item"}</p>
                     <p className="mt-1 text-sm text-ink-muted">
                       {rental.startDate && rental.endDate ? `${rental.startDate} – ${rental.endDate}` : "Scheduled booking"}
                     </p>

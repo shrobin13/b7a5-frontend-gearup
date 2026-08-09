@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProviderOrders, updateProviderOrder } from "@/services/provider";
 import { useAuthStore } from "@/store/auth-store";
+import { getRentalItemName } from "@/lib/utils";
 import type { Rental } from "@/types";
 
 const sidebarItems = [
@@ -106,7 +107,7 @@ export default function ProviderOrdersPage() {
             const isUpdating = updatingId === orderId;
             return {
               ...order,
-              gear: order.gear?.name ?? "Rental item",
+              gear: getRentalItemName(order) ?? "Rental item",
               dates: order.startDate && order.endDate ? `${order.startDate} – ${order.endDate}` : "Scheduled",
               actions: (
                 <div className="flex items-center gap-2">

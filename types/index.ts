@@ -32,14 +32,25 @@ export type Gear = {
   providerId?: string;
 };
 
+export type RentalItem = {
+  _id?: string;
+  id?: string;
+  quantity?: number;
+  priceEach?: number | string;
+  gearItemId?: string;
+  gearItem?: Gear;
+};
+
 export type Rental = {
   _id?: string;
   id?: string;
   status?: string;
-  totalAmount?: number;
+  totalAmount?: number | string;
   startDate?: string;
   endDate?: string;
   gear?: Gear;
+  items?: RentalItem[];
+  payments?: Payment[];
 };
 
 export type Payment = {

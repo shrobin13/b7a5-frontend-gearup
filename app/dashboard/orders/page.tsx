@@ -20,6 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cancelRental, getMyRentals, getRentalById } from "@/services/customer";
 import { useAuthStore } from "@/store/auth-store";
+import { formatDateRange, formatMoney, getRentalItemName } from "@/lib/utils";
 import type { Rental } from "@/types";
 
 const sidebarItems = [
@@ -101,7 +102,7 @@ export default function OrdersPage() {
     return null;
   }
 
-  const cancellableStatuses = ["pending", "approved", "active", "confirmed"];
+  const cancellableStatuses = ["placed"];
 
   return (
     <DashboardShell title="Account" accent="accent" items={sidebarItems}>
@@ -134,14 +135,17 @@ export default function OrdersPage() {
             const isCancelling = cancellingId === rentalId;
             const status = (rental.status ?? "").toLowerCase();
             const cancellable = cancellableStatuses.includes(status);
+            const itemName = getRentalItemName(rental);
+            const itemCount = rental.items?.length ?? (rental.gear ? 1 : 0);
 
             return (
-              <Card key={rentalId} className="border border-border bg-surface">
+              <Card key={rentalId || itemName || "order"} className="border border-border bg-surface">
                 <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-medium text-foreground">{rental.gear?.name ?? "Rental item"}</p>
+                    <p className="font-medium text-foreground">{itemName ?? "Rental item"}</p>
                     <p className="mt-1 text-sm text-ink-muted">
-                      {rental.startDate && rental.endDate ? `${rental.startDate} – ${rental.endDate}` : "Scheduled booking"}
+                      {formatDateRange(rental.startDate, rental.endDate) ?? "Scheduled booking"}
+                      {itemCount > 1 ? ` · ${itemCount} items` : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -183,23 +187,49 @@ export default function OrdersPage() {
           ) : detailRental ? (
             <div className="space-y-2 text-sm">
               <div className="flex justify-between gap-3">
-                <span className="text-muted-foreground">Item</span>
-                <span>{detailRental.gear?.name ?? "Rental item"}</span>
-              </div>
-              <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Status</span>
                 <StatusBadge status={detailRental.status ?? "pending"} />
               </div>
+              {detailRental.items?.length ? (
+                detailRental.items.map((item, index) => {
+                  const itemName = item.gearItem?.name ?? getRentalItemName(detailRental) ?? "Rental item";
+                  return (
+                    <div
+                      key={item.id ?? item.gearItemId ?? `${itemName}-${index}`}
+                      className="flex items-center justify-between gap-3"
+                    >
+                      <span className="text-muted-foreground">{index === 0 ? "Item" : ""}</span>
+                      <span className="text-right">
+                        {itemName}
+                        {item.quantity && item.quantity > 1 ? (
+                          <span className="ml-1 text-muted-foreground">× {item.quantity}</span>
+                        ) : null}
+                        {item.priceEach != null ? (
+                          <span className="ml-1 text-muted-foreground">@ ${formatMoney(item.priceEach)}</span>
+                        ) : null}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Item</span>
+                  <span>{getRentalItemName(detailRental) ?? "Rental item"}</span>
+                </div>
+              )}
               {detailRental.startDate && detailRental.endDate ? (
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Dates</span>
-                  <span>{detailRental.startDate} – {detailRental.endDate}</span>
+                  <span>
+                    {formatDateRange(detailRental.startDate, detailRental.endDate) ??
+                      `${detailRental.startDate} – ${detailRental.endDate}`}
+                  </span>
                 </div>
               ) : null}
               {detailRental.totalAmount != null ? (
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Total</span>
-                  <span className="font-mono">${detailRental.totalAmount}</span>
+                  <span className="font-mono">${formatMoney(detailRental.totalAmount)}</span>
                 </div>
               ) : null}
             </div>
