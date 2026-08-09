@@ -1,0 +1,26 @@
+name: Keep Render services awake
+
+on:
+  # Render free instances spin down after 15 minutes of inactivity.
+  # Ping every 10 minutes to keep both services warm.
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: Ping backend & frontend health checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend
+        run: |
+          curl -fsS -o /dev/null -w "backend: HTTP %{http_code} in %{time_total}s\n" \
+            https://gearup-igqw.onrender.com/health || echo "backend ping failed (cold start?)"
+
+      - name: Ping frontend
+        run: |
+          curl -fsS -o /dev/null -w "frontend: HTTP %{http_code} in %{time_total}s\n" \
+            https://b7a5-frontend-gearup-1.onrender.com/api/health || echo "frontend ping failed (cold start?)"
