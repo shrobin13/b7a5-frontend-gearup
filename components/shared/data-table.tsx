@@ -19,7 +19,7 @@ export function DataTable<T extends Record<string, unknown>>({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-surface-muted">
+    <div className="overflow-x-auto rounded-2xl border border-border bg-surface-muted">
       <Table>
         <TableHeader>
           <TableRow className="border-b border-border bg-surface">
