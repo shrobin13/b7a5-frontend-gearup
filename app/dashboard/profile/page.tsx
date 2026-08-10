@@ -40,7 +40,12 @@ export default function ProfilePage() {
         }
 
         const payload = await response.json();
-        const nextUser = (payload?.user ?? payload ?? null) as AppUser | null;
+        const nextUser =
+          (payload?.user ??
+            payload?.data?.user ??
+            payload?.data ??
+            payload ??
+            null) as AppUser | null;
 
         if (cancelled) {
           return;

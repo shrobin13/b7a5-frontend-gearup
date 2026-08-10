@@ -79,8 +79,12 @@ export async function getCurrentUser() {
   }
 
   const payload = data as AuthResponse;
-  const user = payload?.user ?? payload?.data?.user ?? (data as AppUser);
-  return user as AppUser;
+  const user =
+    payload?.user ??
+    payload?.data?.user ??
+    (payload?.data as AppUser | undefined) ??
+    (data as AppUser);
+  return user;
 }
 
 export async function logout() {
