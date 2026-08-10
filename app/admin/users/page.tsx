@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DataTable } from "@/components/shared/data-table";
+import { SearchField } from "@/components/shared/search-field";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,7 @@ export default function AdminUsersPage() {
   const [role, setRole] = useState<"CUSTOMER" | "PROVIDER" | "ADMIN">("CUSTOMER");
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -81,6 +83,14 @@ export default function AdminUsersPage() {
 
   if (!hasHydrated || !isAuthenticated) return null;
 
+  const filteredUsers = users.filter((user) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return [user.name, user.email, user.role, user.status].some(
+      (value) => typeof value === "string" && value.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <DashboardShell title="Admin" accent="ink" items={sidebarItems}>
       <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -89,6 +99,15 @@ export default function AdminUsersPage() {
           <h1 className="mt-2 font-display text-4xl text-ink">Member directory</h1>
         </div>
         <Button className="rounded-xl bg-ink text-white hover:bg-ink/90">Invite user</Button>
+      </div>
+
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="w-full md:max-w-sm">
+          <SearchField value={query} onChange={setQuery} placeholder="Search by name, email, role, status..." />
+        </div>
+        <p className="text-sm text-ink-muted">
+          {filteredUsers.length} of {users.length} members
+        </p>
       </div>
 
       {loading && users.length === 0 ? (
@@ -108,7 +127,7 @@ export default function AdminUsersPage() {
             { key: "status", label: "Status" },
             { key: "actions", label: "Actions" },
           ]}
-          data={users.map((user) => ({
+          data={filteredUsers.map((user) => ({
           ...user,
           status: user.status ?? (user.isActive === false ? "SUSPENDED" : "ACTIVE"),
           actions: (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft, Star, Store } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { getGearById } from "@/services/gear";
@@ -43,24 +43,23 @@ export default function GearDetailPage() {
   const [range, setRange] = useState<{ from?: Date; to?: Date }>({});
   const [quantity, setQuantity] = useState(1);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [reviewText, setReviewText] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [disabledDates, setDisabledDates] = useState<Date[]>([]);
   const [activeImage, setActiveImage] = useState<string | undefined>(undefined);
+  const [providerName, setProviderName] = useState<string | undefined>(undefined);
+  const [hasReturnedRental, setHasReturnedRental] = useState(false);
 
   const id = params?.id;
 
   useEffect(() => {
     if (!id) {
-      setLoading(false);
       return;
     }
 
     const loadGear = async () => {
-      setLoading(true);
       try {
         const item = await getGearById(id);
 
@@ -93,6 +92,13 @@ export default function GearDetailPage() {
         });
         setActiveImage(imageUrls[0]);
 
+        const rawPayload = item as { provider?: { name?: string } };
+        setProviderName(
+          typeof rawPayload.provider?.name === "string" && rawPayload.provider.name.trim()
+            ? rawPayload.provider.name.trim()
+            : undefined
+        );
+
         try {
           const nextReviews = await getGearReviews(gearId);
           setReviews(Array.isArray(nextReviews) ? nextReviews : []);
@@ -102,8 +108,9 @@ export default function GearDetailPage() {
 
         if (isAuthenticated) {
           try {
-            const nextRentals = await getMyRentals();
-            const bookedDates = (Array.isArray(nextRentals) ? nextRentals : [])
+            const myRentals = await getMyRentals();
+            const rentals = Array.isArray(myRentals) ? myRentals : [];
+            const bookedDates = rentals
               .filter((rental) => {
                 const gearItem = (rental as { items?: { gearItem?: { id?: string; _id?: string } }[] }).items?.[0]?.gearItem;
                 return gearItem?.id === gearId || gearItem?._id === gearId;
@@ -121,31 +128,38 @@ export default function GearDetailPage() {
                 return dates;
               });
             setDisabledDates(bookedDates);
+            setHasReturnedRental(
+              rentals.some((rental) => {
+                if ((rental.status ?? "").toUpperCase() !== "RETURNED") return false;
+                const gearItem = (rental as { items?: { gearItem?: { id?: string; _id?: string } }[] }).items?.[0]?.gearItem;
+                return gearItem?.id === gearId || gearItem?._id === gearId;
+              })
+            );
           } catch {
             setDisabledDates([]);
+            setHasReturnedRental(false);
           }
         }
       } catch {
         setGear(null);
         setReviews([]);
-      } finally {
-        setLoading(false);
       }
     };
 
     void loadGear();
   }, [id, isAuthenticated]);
 
-  const canSubmitReview = useMemo(() => {
-    if (!gear?.id || !isAuthenticated) return false;
-    return !reviews.some(
-      (review) =>
-        review.gearItemId === gear.id ||
-        review.gearItemId === gear._id ||
-        review.gearId === gear.id ||
-        review.gearId === gear._id
-    );
-  }, [gear?._id, gear?.id, isAuthenticated, reviews]);
+  const canSubmitReview = Boolean(
+    gear?.id &&
+      isAuthenticated &&
+      !reviews.some(
+        (review) =>
+          review.gearItemId === gear.id ||
+          review.gearItemId === gear._id ||
+          review.gearId === gear.id ||
+          review.gearId === gear._id
+      )
+  );
 
   const nights = useMemo(() => {
     if (!range.from || !range.to) return 0;
@@ -233,6 +247,12 @@ export default function GearDetailPage() {
         <div>
           <p className="text-[0.7rem] uppercase tracking-[0.2em] text-accent">Gear detail</p>
           <h1 className="mt-2 font-display text-4xl text-ink md:text-5xl">{gear.name}</h1>
+          {providerName ? (
+            <p className="mt-2 flex items-center gap-2 text-sm text-ink-muted">
+              <Store className="h-4 w-4 text-accent" />
+              Provided by <span className="font-medium text-foreground">{providerName}</span>
+            </p>
+          ) : null}
         </div>
         <Button asChild variant="outline" className="rounded-xl border-border bg-background">
           <Link href="/gear" className="inline-flex items-center gap-2">
@@ -359,7 +379,7 @@ export default function GearDetailPage() {
 
           {bookingError ? <p className="mt-3 text-sm text-destructive">{bookingError}</p> : null}
           <Button size="lg" className="mt-6 h-12 w-full rounded-xl bg-accent text-white hover:bg-accent/90" onClick={handleReserve} disabled={submitting || !range.from || !range.to || !gear.available}>
-            {submitting ? "Reserving..." : `Reserve — $${total}`}
+            {submitting ? "Renting..." : `Rent now — $${total}`}
           </Button>
           <p className="mt-3 text-center text-sm text-ink-muted">Free pickup and flexible cancellation up to 24 hours before checkout.</p>
         </aside>
@@ -371,7 +391,7 @@ export default function GearDetailPage() {
             <CardTitle className="font-display text-3xl text-ink">Reviews</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {canSubmitReview ? (
+            {canSubmitReview && hasReturnedRental ? (
               <div className="rounded-2xl border border-border bg-surface-muted p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   {Array.from({ length: 5 }).map((_, index) => (
@@ -383,6 +403,12 @@ export default function GearDetailPage() {
                 <Input value={reviewText} onChange={(event) => setReviewText(event.target.value)} placeholder="Write a review" />
                 <Button onClick={handleReviewSubmit} className="rounded-xl">Post review</Button>
               </div>
+            ) : isAuthenticated ? (
+              <p className="rounded-2xl border border-border bg-surface-muted px-4 py-3 text-sm text-ink-muted">
+                {hasReturnedRental
+                  ? "You&apos;ve already reviewed this gear."
+                  : "Reviews unlock after your rental for this gear is returned."}
+              </p>
             ) : null}
             {reviews.length ? reviews.map((review, index) => (
               <div key={review._id ?? review.id ?? `${review.comment ?? "review"}-${index}`} className="rounded-2xl border border-border bg-surface-muted p-4">

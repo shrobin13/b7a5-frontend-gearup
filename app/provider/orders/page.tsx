@@ -55,6 +55,11 @@ export default function ProviderOrdersPage() {
 
   const handleStatusChange = async (id: string, status: string) => {
     setUpdatingId(id);
+    const previousOrders = orders;
+    setOrders((current) =>
+      current.map((order) => ((order._id ?? order.id) === id ? { ...order, status } : order))
+    );
+
     try {
       await updateProviderOrder(id, status);
       const message =
@@ -62,11 +67,14 @@ export default function ProviderOrdersPage() {
           ? "Order marked as picked up"
           : status === "RETURNED"
             ? "Order marked as returned"
-            : `Order ${status.toLowerCase()}`;
+            : status === "CONFIRMED"
+              ? "Order confirmed"
+              : `Order ${status.toLowerCase()}`;
       toast.success(message);
       const nextOrders = await getProviderOrders();
       setOrders(Array.isArray(nextOrders) ? nextOrders : []);
     } catch (error) {
+      setOrders(previousOrders);
       toast.error(error instanceof Error ? error.message : "Could not update order");
     } finally {
       setUpdatingId(null);
@@ -99,7 +107,7 @@ export default function ProviderOrdersPage() {
         </div>
       ) : null}
       {!loading && !orders.length ? (
-        <EmptyState title="No bookings found" description="There are no paid bookings to fulfil right now." />
+        <EmptyState title="No bookings found" description="There are no bookings to manage right now." />
       ) : (
         <DataTable
           columns={[
@@ -121,6 +129,17 @@ export default function ProviderOrdersPage() {
               status: humanizeRentalStatus(order.status),
               actions: (
                 <div className="flex items-center gap-2">
+                  {statusKey === "PLACED" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-lg"
+                      disabled={isUpdating}
+                      onClick={() => handleStatusChange(orderId, "CONFIRMED")}
+                    >
+                      {isUpdating ? "Updating..." : "Confirm"}
+                    </Button>
+                  ) : null}
                   {statusKey === "PAID" ? (
                     <Button
                       variant="outline"
@@ -144,7 +163,7 @@ export default function ProviderOrdersPage() {
                     </Button>
                   ) : null}
                   {isReturned ? <span className="text-xs text-ink-muted">Completed</span> : null}
-                  {!["PAID", "PICKED_UP", "RETURNED", "CANCELLED"].includes(statusKey) ? (
+                  {statusKey === "CONFIRMED" ? (
                     <span className="text-xs text-ink-muted">Awaiting payment</span>
                   ) : null}
                 </div>

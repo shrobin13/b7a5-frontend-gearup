@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Store, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ export default function RegisterPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [role, setRole] = useState<"CUSTOMER" | "PROVIDER">("CUSTOMER");
 
   function validateForm(values = form) {
     const nextErrors: Record<string, string> = {};
@@ -82,7 +83,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await register(form);
+      await register({ ...form, role });
       toast.success("Registration successful");
       router.push("/login");
     } catch (error) {
@@ -109,6 +110,50 @@ export default function RegisterPage() {
 
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium text-foreground">Account type</label>
+              <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Account type">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={role === "CUSTOMER"}
+                  onClick={() => setRole("CUSTOMER")}
+                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
+                    role === "CUSTOMER"
+                      ? "border-accent bg-accent/5 ring-1 ring-accent"
+                      : "border-border bg-surface-muted hover:border-ink-muted"
+                  }`}
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface text-accent shadow-sm">
+                    <UserRound className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-medium text-foreground">I&apos;m renting gear</span>
+                    <span className="block text-xs text-ink-muted">Browse and book as a customer</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={role === "PROVIDER"}
+                  onClick={() => setRole("PROVIDER")}
+                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
+                    role === "PROVIDER"
+                      ? "border-accent bg-accent/5 ring-1 ring-accent"
+                      : "border-border bg-surface-muted hover:border-ink-muted"
+                  }`}
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface text-accent shadow-sm">
+                    <Store className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-medium text-foreground">I&apos;m a provider</span>
+                    <span className="block text-xs text-ink-muted">List and rent out your gear</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-2 md:col-span-2">
               <label htmlFor="name" className="text-sm font-medium text-foreground">
                 Full name

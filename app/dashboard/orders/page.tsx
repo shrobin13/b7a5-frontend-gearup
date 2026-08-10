@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cancelRental, getMyRentals, getRentalById } from "@/services/customer";
+import { createPayment } from "@/services/payment";
 import { useAuthStore } from "@/store/auth-store";
 import { formatDateRange, formatMoney, getRentalItemName } from "@/lib/utils";
 import type { Rental } from "@/types";
@@ -36,6 +37,7 @@ export default function OrdersPage() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   const [detailRental, setDetailRental] = useState<Rental | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -80,6 +82,30 @@ export default function OrdersPage() {
     }
   };
 
+  const handlePayNow = async (id: string) => {
+    setPayingId(id);
+    try {
+      const payment = await createPayment({ rentalOrderId: id, provider: "STRIPE" });
+      const redirectUrl = payment.url ?? payment.checkoutUrl ?? payment.paymentUrl ?? payment.redirectUrl ?? payment.sessionUrl;
+      if (redirectUrl) {
+        window.location.assign(redirectUrl);
+        return;
+      }
+      const nextId = payment._id ?? payment.paymentId ?? id;
+      router.push(`/payment/success?rentalId=${encodeURIComponent(id)}&paymentId=${encodeURIComponent(nextId ?? "")}`);
+      toast.success("Payment started");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not start payment";
+      if (message.toLowerCase().includes("already exists")) {
+        toast.error("A payment for this rental was already started — check your payments page.");
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setPayingId(null);
+    }
+  };
+
   const handleViewDetails = async (id: string) => {
     if (!id) {
       return;
@@ -103,6 +129,7 @@ export default function OrdersPage() {
   }
 
   const cancellableStatuses = ["placed"];
+  const payableStatuses = ["placed", "confirmed", "pending"];
 
   return (
     <DashboardShell title="Account" accent="accent" items={sidebarItems}>
@@ -137,6 +164,10 @@ export default function OrdersPage() {
             const cancellable = cancellableStatuses.includes(status);
             const itemName = getRentalItemName(rental);
             const itemCount = rental.items?.length ?? (rental.gear ? 1 : 0);
+            const gearItemId =
+              rental.items?.[0]?.gearItem?.id ??
+              rental.items?.[0]?.gearItem?._id ??
+              rental.items?.[0]?.gearItemId;
 
             return (
               <Card key={rentalId || itemName || "order"} className="border border-border bg-surface">
@@ -159,6 +190,26 @@ export default function OrdersPage() {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
+                    {status === "returned" && gearItemId ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-lg bg-accent/5 text-accent hover:bg-accent/10"
+                        onClick={() => router.push(`/gear/${gearItemId}`)}
+                      >
+                        Leave review
+                      </Button>
+                    ) : null}
+                    {payableStatuses.includes(status) && !cancellable ? (
+                      <Button
+                        size="sm"
+                        className="rounded-lg"
+                        disabled={payingId === rentalId}
+                        onClick={() => handlePayNow(rentalId)}
+                      >
+                        {payingId === rentalId ? "Starting..." : "Pay now"}
+                      </Button>
+                    ) : null}
                     {cancellable ? (
                       <Button variant="outline" size="sm" className="rounded-lg" disabled={isCancelling} onClick={() => handleCancel(rentalId)}>
                         {isCancelling ? "Cancelling..." : "Cancel"}

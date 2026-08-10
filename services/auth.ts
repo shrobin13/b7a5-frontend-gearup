@@ -10,6 +10,7 @@ export type AuthRegisterPayload = {
   email: string;
   password: string;
   confirmPassword: string;
+  role?: "CUSTOMER" | "PROVIDER";
   phone?: string;
   address?: string;
 };
