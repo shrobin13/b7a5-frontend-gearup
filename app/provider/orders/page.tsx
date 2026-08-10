@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProviderOrders, updateProviderOrder } from "@/services/provider";
 import { useAuthStore } from "@/store/auth-store";
-import { getRentalItemName } from "@/lib/utils";
+import { getRentalItemName, humanizeRentalStatus } from "@/lib/utils";
 import type { Rental } from "@/types";
 
 const sidebarItems = [
@@ -57,7 +57,13 @@ export default function ProviderOrdersPage() {
     setUpdatingId(id);
     try {
       await updateProviderOrder(id, status);
-      toast.success(`Order ${status.toLowerCase()}`);
+      const message =
+        status === "PICKED_UP"
+          ? "Order marked as picked up"
+          : status === "RETURNED"
+            ? "Order marked as returned"
+            : `Order ${status.toLowerCase()}`;
+      toast.success(message);
       const nextOrders = await getProviderOrders();
       setOrders(Array.isArray(nextOrders) ? nextOrders : []);
     } catch (error) {
@@ -76,7 +82,7 @@ export default function ProviderOrdersPage() {
       <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-[0.7rem] uppercase tracking-[0.2em] text-pine">Orders</p>
-          <h1 className="mt-2 font-display text-4xl text-ink">Booking queue</h1>
+          <h1 className="mt-2 font-display text-4xl text-ink">Bookings</h1>
         </div>
         <Button variant="outline" className="rounded-xl border-border bg-background">
           Export report
@@ -93,7 +99,7 @@ export default function ProviderOrdersPage() {
         </div>
       ) : null}
       {!loading && !orders.length ? (
-        <EmptyState title="No orders found" description="You do not have any booking requests right now." />
+        <EmptyState title="No bookings found" description="There are no paid bookings to fulfil right now." />
       ) : (
         <DataTable
           columns={[
@@ -105,30 +111,42 @@ export default function ProviderOrdersPage() {
           data={orders.map((order) => {
             const orderId = order._id ?? order.id ?? "";
             const isUpdating = updatingId === orderId;
+            const statusKey = (order.status ?? "").toUpperCase();
+            const isReturned = statusKey === "RETURNED" || statusKey === "CANCELLED";
+
             return {
               ...order,
               gear: getRentalItemName(order) ?? "Rental item",
               dates: order.startDate && order.endDate ? `${order.startDate} – ${order.endDate}` : "Scheduled",
+              status: humanizeRentalStatus(order.status),
               actions: (
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-lg"
-                    disabled={isUpdating}
-                    onClick={() => handleStatusChange(orderId, "APPROVED")}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="rounded-lg"
-                    disabled={isUpdating}
-                    onClick={() => handleStatusChange(orderId, "REJECTED")}
-                  >
-                    Reject
-                  </Button>
+                  {statusKey === "PAID" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-lg"
+                      disabled={isUpdating}
+                      onClick={() => handleStatusChange(orderId, "PICKED_UP")}
+                    >
+                      {isUpdating ? "Updating..." : "Mark picked up"}
+                    </Button>
+                  ) : null}
+                  {statusKey === "PICKED_UP" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-lg"
+                      disabled={isUpdating}
+                      onClick={() => handleStatusChange(orderId, "RETURNED")}
+                    >
+                      {isUpdating ? "Updating..." : "Mark returned"}
+                    </Button>
+                  ) : null}
+                  {isReturned ? <span className="text-xs text-ink-muted">Completed</span> : null}
+                  {!["PAID", "PICKED_UP", "RETURNED", "CANCELLED"].includes(statusKey) ? (
+                    <span className="text-xs text-ink-muted">Awaiting payment</span>
+                  ) : null}
                 </div>
               ),
             };

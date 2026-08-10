@@ -26,7 +26,6 @@ export default function ProviderDashboardPage() {
   const { isAuthenticated, user, hasHydrated } = useAuthStore();
   const [gear, setGear] = useState<Gear[]>([]);
   const [orders, setOrders] = useState<Rental[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -39,7 +38,6 @@ export default function ProviderDashboardPage() {
     }
 
     async function loadData() {
-      setLoading(true);
       try {
         const [nextGear, nextOrders] = await Promise.all([getProviderGear(), getProviderOrders()]);
         setGear(nextGear ?? []);
@@ -47,8 +45,6 @@ export default function ProviderDashboardPage() {
       } catch {
         setGear([]);
         setOrders([]);
-      } finally {
-        setLoading(false);
       }
     }
 
@@ -56,8 +52,8 @@ export default function ProviderDashboardPage() {
   }, [hasHydrated, isAuthenticated, router]);
 
   const displayName = user?.name ?? user?.email?.split("@")[0] ?? "Partner";
-  const pendingOrders = useMemo(
-    () => orders.filter((order) => ["pending", "processing"].includes((order.status ?? "").toLowerCase())),
+  const activeBookings = useMemo(
+    () => orders.filter((order) => ["PAID", "PICKED_UP", "RETURNED"].includes((order.status ?? "").toUpperCase())),
     [orders],
   );
   const revenue = orders.reduce((sum, order) => sum + Number(order.totalAmount ?? 0), 0);
@@ -78,14 +74,14 @@ export default function ProviderDashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <MetricCard title="Listings" value={String(gear.length)} detail="active rentals" tone="pine" />
-        <MetricCard title="Pending orders" value={String(pendingOrders.length)} detail="need action" tone="accent" />
+        <MetricCard title="Active bookings" value={String(activeBookings.length)} detail="paid reservations" tone="accent" />
         <MetricCard title="Revenue" value={`$${revenue}`} detail="this month" tone="ink" />
       </div>
 
       <div className="mt-8">
         <Card className="border border-border bg-surface">
           <CardHeader className="pb-3">
-            <CardTitle className="font-display text-2xl text-ink">Orders needing action</CardTitle>
+            <CardTitle className="font-display text-2xl text-ink">Recent bookings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {orders.length ? (
@@ -95,16 +91,11 @@ export default function ProviderDashboardPage() {
                     <p className="font-medium text-foreground">{getRentalItemName(order) ?? "Rental item"}</p>
                     <p className="mt-1 text-sm text-ink-muted">{order.startDate && order.endDate ? `${order.startDate} – ${order.endDate}` : "Booking request"}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <StatusBadge status={order.status ?? "pending"} />
-                    <Button variant="outline" size="sm" className="rounded-lg">
-                      {loading ? "Loading" : "Approve"}
-                    </Button>
-                  </div>
+                  <StatusBadge status={order.status ?? "pending"} />
                 </div>
               ))
             ) : (
-              <EmptyState title="No data available" description="There are no orders waiting for your review yet." />
+              <EmptyState title="No bookings found" description="There are no paid bookings to fulfil right now." />
             )}
           </CardContent>
         </Card>

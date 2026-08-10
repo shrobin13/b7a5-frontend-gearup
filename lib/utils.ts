@@ -76,3 +76,20 @@ export function formatMoney(value: number | string | null | undefined): string {
 
   return numeric.toFixed(2);
 }
+
+/**
+ * Humanize a rental order status for display in badges/tables.
+ */
+export function humanizeRentalStatus(status?: string | null): string {
+  const normalized = (status ?? "").toUpperCase();
+  const labels: Record<string, string> = {
+    PLACED: "Placed",
+    CONFIRMED: "Confirmed",
+    PAID: "Paid",
+    PICKED_UP: "Picked up",
+    RETURNED: "Returned",
+    CANCELLED: "Cancelled",
+  };
+
+  return labels[normalized] ?? (status?.trim() ? status : "Pending");
+}
