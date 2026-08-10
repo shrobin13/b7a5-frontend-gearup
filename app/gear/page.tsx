@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/shared/empty-state";
+import { SearchField } from "@/components/shared/search-field";
 import { getAllCategories, getAllGear } from "@/services/gear";
 import { GearCard } from "@/components/shared/gear-card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,8 @@ type GearItem = {
   price: number;
   rating: number;
   available: boolean;
+  brand?: string;
+  image?: string;
 };
 
 type SortKey = "recommended" | "price-asc" | "price-desc" | "rating";
@@ -37,8 +40,10 @@ export default function GearPage() {
   const [backendCategories, setBackendCategories] = useState<string[]>([]);
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState(Infinity);
   const [availability, setAvailability] = useState<"any" | "available">("any");
+  const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("recommended");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -74,6 +79,13 @@ export default function GearPage() {
           price: Number(item.pricePerDay ?? 0),
           rating: Number(item.rating ?? 4.5),
           available: Boolean(item.isAvailable ?? Number(item.stockQuantity ?? item.stock ?? 0) > 0),
+          brand: typeof item.brand === "string" && item.brand.trim() ? item.brand.trim() : undefined,
+          image:
+            typeof item.image === "string" && item.image.trim()
+              ? item.image.trim()
+              : Array.isArray(item.images) && typeof item.images[0] === "string"
+                ? item.images[0]
+                : undefined,
         }));
 
         setItems(mapped);
@@ -108,12 +120,37 @@ export default function GearPage() {
     return Array.from(set).sort();
   }, [items, backendCategories]);
 
+  const brands = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of items) {
+      if (item.brand) {
+        set.add(item.brand);
+      }
+    }
+    return Array.from(set).sort();
+  }, [items]);
+
   const filtered = useMemo(() => {
     let result = items;
+
+    const query = search.trim().toLowerCase();
+    if (query) {
+      result = result.filter(
+        (item) =>
+          item.name.toLowerCase().includes(query) ||
+          item.category.toLowerCase().includes(query) ||
+          (item.brand ?? "").toLowerCase().includes(query),
+      );
+    }
 
     if (selectedCategories.length > 0) {
       const wanted = new Set(selectedCategories);
       result = result.filter((item) => wanted.has(item.category));
+    }
+
+    if (selectedBrands.length > 0) {
+      const wanted = new Set(selectedBrands);
+      result = result.filter((item) => item.brand && wanted.has(item.brand));
     }
 
     if (Number.isFinite(maxPrice)) {
@@ -143,10 +180,12 @@ export default function GearPage() {
     }
 
     return result;
-  }, [items, selectedCategories, maxPrice, availability, sort]);
+  }, [items, search, selectedCategories, selectedBrands, maxPrice, availability, sort]);
 
   const hasActiveFilters =
+    search.trim().length > 0 ||
     selectedCategories.length > 0 ||
+    selectedBrands.length > 0 ||
     availability === "available" ||
     maxPrice !== Infinity;
 
@@ -158,8 +197,18 @@ export default function GearPage() {
     );
   }
 
+  function toggleBrand(brand: string) {
+    setSelectedBrands((prev) =>
+      prev.includes(brand)
+        ? prev.filter((item) => item !== brand)
+        : [...prev, brand],
+    );
+  }
+
   function resetFilters() {
+    setSearch("");
     setSelectedCategories([]);
+    setSelectedBrands([]);
     setAvailability("any");
     const highest = items.reduce((max, item) => (item.price > max ? item.price : max), 0);
     setMaxPrice(highest > 0 ? highest : Infinity);
@@ -215,6 +264,10 @@ export default function GearPage() {
             )}
           </div>
 
+          <div className="mt-5">
+            <SearchField value={search} onChange={setSearch} placeholder="Search gear, brand…" />
+          </div>
+
           <div className="mt-5 space-y-5 text-sm text-ink-muted">
             <div>
               <div className="mb-3 flex items-center justify-between">
@@ -252,6 +305,47 @@ export default function GearPage() {
                 })}
               </div>
             </div>
+
+            <Separator />
+
+            {brands.length > 0 && (
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="font-medium text-foreground">Brand</p>
+                  {selectedBrands.length > 0 && (
+                    <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[0.65rem] font-semibold text-accent">
+                      {selectedBrands.length} selected
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2.5">
+                  {brands.map((brand) => {
+                    const checked = selectedBrands.includes(brand);
+                    return (
+                      <label
+                        key={brand}
+                        className="group flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-muted"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleBrand(brand)}
+                          className="border-border data-checked:border-accent data-checked:bg-accent"
+                        />
+                        <span
+                          className={
+                            checked
+                              ? "font-medium text-foreground"
+                              : "text-ink-muted group-hover:text-foreground"
+                          }
+                        >
+                          {brand}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <Separator />
 

@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  images: {
+    remotePatterns: [
+      // Gear image URLs are provider-supplied, so allow any HTTPS host
+      // plus localhost for local development.
+      { protocol: "https", hostname: "**" },
+      { protocol: "http", hostname: "localhost" },
+      { protocol: "http", hostname: "127.0.0.1" },
+    ],
+  },
 };
 
 export default nextConfig;

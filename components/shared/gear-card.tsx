@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Heart, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,7 @@ type GearCardItem = {
   price: number;
   rating: number;
   available: boolean;
+  image?: string;
 };
 
 export function GearCard({
@@ -30,9 +32,25 @@ export function GearCard({
   return (
     <Card className="group h-full overflow-hidden border border-border bg-surface transition-all duration-150 hover:-translate-y-1 hover:border-accent/50">
       <div className="relative">
-        <div className="flex h-44 items-center justify-center bg-gradient-to-br from-surface-muted via-surface to-accent-soft text-3xl font-display text-ink opacity-80">
-          {itemName.slice(0, 2).toUpperCase()}
-        </div>
+        <Link
+          href={`/gear/${item.id ?? "details"}`}
+          aria-label={`View ${itemName}`}
+          className="relative block h-44 overflow-hidden bg-gradient-to-br from-surface-muted via-surface to-accent-soft"
+        >
+          {item.image ? (
+            <Image
+              src={item.image}
+              alt={itemName}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 25vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-3xl font-display text-ink opacity-80">
+              {itemName.slice(0, 2).toUpperCase()}
+            </span>
+          )}
+        </Link>
         <button
           type="button"
           aria-label={`Save ${item.name}`}

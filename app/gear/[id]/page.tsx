@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Star } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -15,7 +16,7 @@ import { createReview, getGearReviews } from "@/services/reviews";
 import { useAuthStore } from "@/store/auth-store";
 import type { Review } from "@/types";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, startOfToday } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { getCategoryName } from "@/lib/utils";
 
@@ -35,6 +36,9 @@ export default function GearDetailPage() {
     available: boolean;
     description: string;
     stock: number;
+    brand?: string;
+    image?: string;
+    images?: string[];
   } | null>(null);
   const [range, setRange] = useState<{ from?: Date; to?: Date }>({});
   const [quantity, setQuantity] = useState(1);
@@ -45,6 +49,7 @@ export default function GearDetailPage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [disabledDates, setDisabledDates] = useState<Date[]>([]);
+  const [activeImage, setActiveImage] = useState<string | undefined>(undefined);
 
   const id = params?.id;
 
@@ -67,6 +72,11 @@ export default function GearDetailPage() {
 
         const gearId = item.id ?? item._id ?? id;
         const stockValue = Number(item.stockQuantity ?? item.stock ?? 0);
+        const imageUrls = Array.isArray(item.images)
+          ? item.images.filter((url): url is string => typeof url === "string" && Boolean(url.trim()))
+          : typeof item.image === "string" && item.image.trim()
+            ? [item.image.trim()]
+            : [];
         setGear({
           id: gearId,
           _id: item._id ?? item.id ?? id,
@@ -77,7 +87,11 @@ export default function GearDetailPage() {
           available: Boolean(item.isAvailable ?? stockValue > 0),
           description: item.description ?? "No description available.",
           stock: stockValue,
+          brand: typeof item.brand === "string" && item.brand.trim() ? item.brand.trim() : undefined,
+          image: imageUrls[0],
+          images: imageUrls,
         });
+        setActiveImage(imageUrls[0]);
 
         try {
           const nextReviews = await getGearReviews(gearId);
@@ -231,12 +245,46 @@ export default function GearDetailPage() {
       <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <section>
           <div className="grid gap-4 md:grid-cols-[1.5fr_0.5fr]">
-            <div className="h-[420px] rounded-[2rem] border border-border bg-gradient-to-br from-accent-soft via-surface-muted to-pine-soft shadow-[0_18px_42px_rgba(26,36,32,0.04)]" />
-            <div className="grid gap-4">
-              <div className="h-24 rounded-[1.5rem] border border-border bg-surface-muted" />
-              <div className="h-24 rounded-[1.5rem] border border-border bg-surface-muted" />
-              <div className="h-24 rounded-[1.5rem] border border-border bg-surface-muted" />
+            <div className="relative h-[420px] overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-accent-soft via-surface-muted to-pine-soft shadow-[0_18px_42px_rgba(26,36,32,0.04)]">
+              {activeImage ? (
+                <Image
+                  src={activeImage}
+                  alt={gear.name}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 60vw"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-5xl font-display text-ink opacity-60">
+                  {gear.name.slice(0, 2).toUpperCase()}
+                </div>
+              )}
             </div>
+            {gear.images && gear.images.length > 1 ? (
+              <div className="grid gap-4">
+                {gear.images.map((image, index) => (
+                  <button
+                    key={`${image}-${index}`}
+                    type="button"
+                    onClick={() => setActiveImage(image)}
+                    aria-label={`View image ${index + 1}`}
+                    className={`relative h-24 overflow-hidden rounded-[1.5rem] border transition-all ${
+                      activeImage === image
+                        ? "border-accent ring-2 ring-accent/30"
+                        : "border-border hover:border-accent/40"
+                    }`}
+                  >
+                    <Image src={image} alt={`${gear.name} image ${index + 1}`} fill sizes="160px" className="object-cover" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                <div className="h-24 rounded-[1.5rem] border border-border bg-surface-muted" />
+                <div className="h-24 rounded-[1.5rem] border border-border bg-surface-muted" />
+                <div className="h-24 rounded-[1.5rem] border border-border bg-surface-muted" />
+              </div>
+            )}
           </div>
         </section>
 
@@ -260,8 +308,7 @@ export default function GearDetailPage() {
           <p className="mt-5 text-base leading-7 text-ink-muted">{gear.description}</p>
 
           <div className="mt-6 space-y-3 rounded-2xl border border-border bg-surface-muted p-4 text-sm text-ink-muted">
-            <p>• Capacity: 4 people</p>
-            <p>• Condition: Like new</p>
+            {gear.brand ? <p>• Brand: {gear.brand}</p> : null}
             <p>• Category: {gear.category}</p>
             <p>• In stock: {gear.stock}</p>
           </div>
@@ -273,7 +320,10 @@ export default function GearDetailPage() {
                 mode="range"
                 selected={range.from && range.to ? { from: range.from, to: range.to } : range.from ? { from: range.from, to: range.from } : undefined}
                 onSelect={(value) => setRange({ from: value?.from, to: value?.to })}
-                disabled={(date) => disabledDates.some((disabledDate) => date.toDateString() === disabledDate.toDateString())}
+                disabled={(date) =>
+                  date < startOfToday() ||
+                  disabledDates.some((disabledDate) => date.toDateString() === disabledDate.toDateString())
+                }
                 className="rounded-xl border border-border bg-surface-muted p-3"
               />
               <p className="mt-2 text-sm text-ink-muted">

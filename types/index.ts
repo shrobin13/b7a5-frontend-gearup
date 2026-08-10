@@ -27,6 +27,8 @@ export type Gear = {
   condition?: string;
   image?: string;
   images?: string[];
+  /** Input-only field: backend create/update gear accepts a single image URL (`imageUrl`). */
+  imageUrl?: string;
   rating?: number;
   provider?: string | { id?: string; name?: string };
   providerId?: string;

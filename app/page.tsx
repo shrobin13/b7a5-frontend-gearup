@@ -29,6 +29,7 @@ type FeaturedGearItem = {
   price: number;
   rating: number;
   available: boolean;
+  image?: string;
 };
 
 function normalizeText(value: unknown, fallback = "Gear item") {
@@ -148,6 +149,12 @@ export default function HomePage() {
               price: normalizeNumber(rawItem.pricePerDay ?? rawItem.price ?? rawItem.dayRate, 0),
               rating: normalizeNumber(rawItem.rating, 4.5),
               available,
+              image:
+                typeof rawItem.image === "string" && rawItem.image.trim()
+                  ? rawItem.image.trim()
+                  : Array.isArray(rawItem.images) && typeof rawItem.images[0] === "string"
+                    ? rawItem.images[0]
+                    : undefined,
             };
           })
           .slice(0, 4);

@@ -47,7 +47,9 @@ type EditForm = {
   name: string;
   pricePerDay: string;
   stock: string;
-  condition: string;
+  brand: string;
+  description: string;
+  image: string;
 };
 
 export default function ProviderInventoryPage() {
@@ -63,7 +65,7 @@ export default function ProviderInventoryPage() {
 
   const [editGear, setEditGear] = useState<Gear | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState<EditForm>({ name: "", pricePerDay: "", stock: "", condition: "" });
+  const [editForm, setEditForm] = useState<EditForm>({ name: "", pricePerDay: "", stock: "", brand: "", description: "", image: "" });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -116,7 +118,9 @@ export default function ProviderInventoryPage() {
       name: gear.name ?? "",
       pricePerDay: gear.pricePerDay != null ? String(gear.pricePerDay) : "",
       stock: gear.stockQuantity != null ? String(gear.stockQuantity) : gear.stock != null ? String(gear.stock) : "",
-      condition: gear.condition ?? "",
+      brand: gear.brand ?? "",
+      description: gear.description ?? "",
+      image: (Array.isArray(gear.images) && gear.images[0]) || gear.image || "",
     });
     setEditError(null);
     setEditOpen(true);
@@ -147,6 +151,24 @@ export default function ProviderInventoryPage() {
       return;
     }
 
+    const brand = editForm.brand.trim();
+    const description = editForm.description.trim();
+    const image = editForm.image.trim();
+
+    if (description && description.length < 10) {
+      setEditError("Description must be at least 10 characters.");
+      return;
+    }
+
+    if (image) {
+      try {
+        new URL(image);
+      } catch {
+        setEditError("Image URL must be a valid URL (e.g. https://…).");
+        return;
+      }
+    }
+
     setEditSaving(true);
     setEditError(null);
 
@@ -154,8 +176,10 @@ export default function ProviderInventoryPage() {
       await updateGear(id, {
         name: editForm.name.trim(),
         pricePerDay,
-        stockQuantity: stock,
-        condition: editForm.condition.trim() || undefined,
+        stock,
+        brand: brand || undefined,
+        description: description || undefined,
+        imageUrl: image || undefined,
       });
       toast.success("Gear updated");
       setEditOpen(false);
@@ -354,8 +378,23 @@ export default function ProviderInventoryPage() {
               <Input id="edit-stock" type="number" min="0" step="1" value={editForm.stock} onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-condition">Condition</Label>
-              <Input id="edit-condition" placeholder="e.g. New, Used, Like new" value={editForm.condition} onChange={(e) => setEditForm({ ...editForm, condition: e.target.value })} />
+              <Label htmlFor="edit-brand">Brand</Label>
+              <Input id="edit-brand" placeholder="e.g. Big Agnes" value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <textarea
+                id="edit-description"
+                rows={3}
+                placeholder="Describe condition, included accessories, pickup details…"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                className="w-full rounded-xl border border-border bg-surface-muted px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-image">Image URL</Label>
+              <Input id="edit-image" type="url" placeholder="https://example.com/tent.jpg" value={editForm.image} onChange={(e) => setEditForm({ ...editForm, image: e.target.value })} />
             </div>
             {editError ? <p role="alert" className="text-sm text-destructive">{editError}</p> : null}
             <DialogFooter>
