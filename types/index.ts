@@ -12,6 +12,15 @@ export type AppUser = {
   status?: "ACTIVE" | "SUSPENDED";
 };
 
+export type Category = {
+  id?: string;
+  _id?: string;
+  name: string;
+  description?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type Gear = {
   _id?: string;
   id?: string;

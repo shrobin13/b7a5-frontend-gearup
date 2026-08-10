@@ -29,6 +29,7 @@ const sidebarItems = [
   { href: "/admin/users", label: "Users" },
   { href: "/admin/gear", label: "Gear" },
   { href: "/admin/rentals", label: "Rentals" },
+  { href: "/admin/categories", label: "Categories" },
 ];
 
 
