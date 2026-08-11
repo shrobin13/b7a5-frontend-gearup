@@ -17,7 +17,7 @@ GearUp is a rental marketplace for outdoor and sports equipment. This project de
 
 1. Install dependencies:
    ```bash
-   npm install
+   pnpm install
    ```
 2. Add environment variables in `.env.local`:
    ```bash
@@ -26,7 +26,7 @@ GearUp is a rental marketplace for outdoor and sports equipment. This project de
    ```
 3. Run the app:
    ```bash
-   npm run dev
+   pnpm run dev
    ```
 
 ## Core routes
