@@ -57,3 +57,12 @@ GearUp is a rental marketplace for outdoor and sports equipment. This project de
 ## API integration
 
 See [API_INTEGRATION.md](API_INTEGRATION.md) for endpoint-to-component mapping.
+
+## Testing & seeded accounts
+
+Ready-made accounts for every role (admin, customer, provider) come seeded with
+the database — all use the same password: `GearUp@2026!`.
+
+See **[TESTING.md](TESTING.md)** for the full account list, seeded gear
+inventory, seeded rental orders, and a role-by-role testing checklist.
+
