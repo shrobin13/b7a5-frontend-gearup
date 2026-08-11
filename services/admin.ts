@@ -85,7 +85,7 @@ export async function getAdminRentals() {
 }
 
 export async function deleteAdminGear(id: string) {
-  const response = await fetch(`/api/gear/${id}`, {
+  const response = await fetch(`/api/admin/gear/${id}`, {
     method: "DELETE",
     cache: "no-store",
   });
@@ -101,7 +101,7 @@ export async function deleteAdminGear(id: string) {
 }
 
 export async function cancelAdminRental(id: string) {
-  const response = await fetch(`/api/rentals/${id}/cancel`, {
+  const response = await fetch(`/api/admin/rentals/${id}/cancel`, {
     method: "PATCH",
     cache: "no-store",
   });
