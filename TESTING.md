@@ -166,8 +166,8 @@ npm run seed:admin        # or just re-create the admin account
 # 2. Frontend (http://localhost:3000)
 cd ..
 cp .env.example .env.local   # set NEXT_PUBLIC_API_URL=http://localhost:5000
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 After `db:refresh`, sign in with any account from [section 2](#2-seeded-accounts-roles--passwords).
